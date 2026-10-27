@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Booking confirmation – MovieBook{% endblock %}
+{% block content %}
+<section class="container section" id="app" data-booking-id="{{ booking_id }}">
+  <p class="empty">Loading your ticket…</p>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/booking.js') }}"></script>{% endblock %}

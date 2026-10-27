@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Choose seats – MovieBook{% endblock %}
+{% block content %}
+<section class="container section" id="app" data-showtime-id="{{ showtime_id }}">
+  <p class="empty">Loading seats…</p>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/book.js') }}"></script>{% endblock %}

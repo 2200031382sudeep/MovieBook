@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}MovieBook{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <header class="navbar">
+    <div class="container nav-inner">
+      <a href="/" class="logo">Movie<span>Book</span></a>
+      <button class="menu-toggle" id="menuToggle" aria-label="Open menu" aria-expanded="false">☰</button>
+      <nav class="nav-links" id="navLinks">
+        <a href="/">Movies</a>
+        {% if current_user %}
+          <a href="/my-bookings">My bookings</a>
+          {% if current_user.is_admin %}<a href="/admin">Admin portal</a>{% endif %}
+          <span class="hello">Hi, {{ current_user.name.split()[0] }}</span>
+          <button class="btn btn-small btn-ghost" id="logoutBtn" type="button">Logout</button>
+        {% else %}
+          <a href="/login">Login</a>
+          <a href="/register" class="btn btn-small">Register</a>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+
+  <main>{% block content %}{% endblock %}</main>
+
+  <footer class="footer">
+    <div class="container">© 2026 MovieBook · Book your seats in seconds</div>
+  </footer>
+
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+  <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

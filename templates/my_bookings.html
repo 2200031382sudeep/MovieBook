@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}My bookings – MovieBook{% endblock %}
+{% block content %}
+<section class="container section">
+  <h2>My bookings</h2>
+  <div id="list"><p class="empty">Loading…</p></div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/my_bookings.js') }}"></script>{% endblock %}

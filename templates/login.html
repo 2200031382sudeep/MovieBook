@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Login – MovieBook{% endblock %}
+{% block content %}
+<div class="card auth-card">
+  <h1>Welcome back</h1>
+  <form id="loginForm">
+    <div class="form-group">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" required autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" required autocomplete="current-password">
+    </div>
+    <p class="form-error" id="formError"></p>
+    <button type="submit" class="btn btn-block">Login</button>
+  </form>
+  <p class="auth-switch">New here? <a href="/register">Create an account</a></p>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/auth.js') }}"></script>{% endblock %}

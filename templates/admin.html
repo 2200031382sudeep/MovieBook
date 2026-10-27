@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Admin portal – MovieBook{% endblock %}
+{% block content %}
+<section class="container section">
+  <h1 class="admin-title">Admin portal</h1>
+  <div class="stats" id="stats"></div>
+
+  <div class="tabs" id="tabs">
+    <button type="button" data-tab="movies" class="active">Movies</button>
+    <button type="button" data-tab="theaters">Theaters</button>
+    <button type="button" data-tab="showtimes">Showtimes &amp; prices</button>
+    <button type="button" data-tab="bookings">Bookings</button>
+  </div>
+
+  <div class="admin-head">
+    <h2 id="tabTitle">Movies</h2>
+    <button type="button" class="btn btn-small" id="addBtn">+ Add</button>
+  </div>
+  <div class="table-wrap" id="tableWrap"></div>
+</section>
+
+<dialog id="modal">
+  <form id="modalForm">
+    <h3 id="modalTitle"></h3>
+    <div id="modalFields"></div>
+    <p class="form-error" id="modalError"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="cancelBtn">Cancel</button>
+      <button type="submit" class="btn">Save</button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/admin.js') }}"></script>{% endblock %}

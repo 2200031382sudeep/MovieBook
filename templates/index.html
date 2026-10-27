@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}MovieBook – Now showing{% endblock %}
+{% block content %}
+<section class="hero">
+  <div class="container">
+    <h1>Lights. Camera. <span>Book your seats.</span></h1>
+    <p>Pick a movie, choose your theater and showtime, and select the best seats.</p>
+    <input type="search" id="searchInput" class="search" placeholder="Search movies…" aria-label="Search movies" autocomplete="off">
+  </div>
+</section>
+
+<section class="container section">
+  <h2>Now showing</h2>
+  <div class="movie-grid" id="movieGrid"><p class="empty">Loading movies…</p></div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/index.js') }}"></script>{% endblock %}
