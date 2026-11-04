@@ -6,7 +6,7 @@ HTML + CSS + JavaScript frontend, Python Flask backend (JSON API), MySQL databas
 
 1. Open this folder in VS Code (File > Open Folder), then Terminal > New Terminal.
 2. `python -m venv venv`
-3. `Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned` then `venv\Scripts\Activate.ps1`
+3. `open cmd activate the virtual environment in script'
 4. `pip install -r requirements.txt`
 5. In MySQL (`mysql -u root -p`): `CREATE DATABASE moviebook_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;` then `exit`
 6. `copy .env.example .env`, open `.env`, put your MySQL password in `DB_PASSWORD`
