@@ -1,16 +1,45 @@
 {% extends "base.html" %}
-{% block title %}Register{% endblock %}
+{% block title %}Create Account - BookMyShow{% endblock %}
+
 {% block content %}
-<div class="panel auth-box">
-  <h1>Create account</h1>
-  <form id="form">
-    <div class="field"><label for="name">Name</label><input id="name" type="text" required maxlength="100" autocomplete="name"></div>
-    <div class="field"><label for="email">Email</label><input id="email" type="email" required autocomplete="email"></div>
-    <div class="field"><label for="password">Password (min 6 characters)</label><input id="password" type="password" required minlength="6" autocomplete="new-password"></div>
-    <div id="msg" class="msg error"></div>
-    <button class="btn" type="submit">Register</button>
-  </form>
-  <p class="muted">Already have an account? <a href="/login">Login</a></p>
+<div class="bms-container">
+  <div class="bms-auth-container">
+    <div class="auth-header-strip">
+      <h2>Create Account</h2>
+      <p>Join BookMyShow for faster bookings & rewards</p>
+    </div>
+
+    <div class="auth-body">
+      <form id="form">
+        <div class="bms-input-group">
+          <label for="name">Full name</label>
+          <input id="name" type="text" placeholder="e.g. Rahul Sharma" required maxlength="100" autocomplete="name">
+        </div>
+
+        <div class="bms-input-group">
+          <label for="email">Email address</label>
+          <input id="email" type="email" placeholder="name@example.com" required autocomplete="email">
+        </div>
+
+        <div class="bms-input-group">
+          <label for="password">Password (minimum 6 characters)</label>
+          <input id="password" type="password" placeholder="Create a password" required minlength="6" autocomplete="new-password">
+        </div>
+
+        <div id="msg" class="msg error"></div>
+
+        <button class="bms-primary-btn" type="submit" style="margin-top:8px;">Agree & Register</button>
+      </form>
+
+      <div class="auth-divider">
+        <span>OR</span>
+      </div>
+
+      <p style="text-align:center;font-size:13.5px;color:var(--bms-text-muted);">
+        Already have an account? <a href="/login" style="color:var(--bms-red);font-weight:700;">Sign in</a>
+      </p>
+    </div>
+  </div>
 </div>
 {% endblock %}
 
@@ -26,7 +55,7 @@
         email: document.getElementById("email").value,
         password: document.getElementById("password").value,
       });
-      window.location.href = safeNext("/theaters");
+      window.location.href = safeNext("/");
     } catch (err) {
       msg.textContent = err.message;
       msg.classList.add("show");

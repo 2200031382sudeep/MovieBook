@@ -1,4 +1,4 @@
-"""HTML pages. The pages are mostly empty shells; JavaScript loads the data from the JSON API."""
+"""HTML Page View Routes."""
 from flask import Blueprint, abort, redirect, render_template, url_for
 
 from extensions import db
@@ -13,17 +13,22 @@ def index():
     return render_template("index.html")
 
 
+@bp.get("/theaters")
+def theaters_page():
+    return render_template("theaters.html")
+
+
 @bp.get("/login")
 def login():
     if current_user():
-        return redirect(url_for("theater_search.theaters_page"))
+        return redirect(url_for("pages.index"))
     return render_template("login.html")
 
 
 @bp.get("/register")
 def register():
     if current_user():
-        return redirect(url_for("theater_search.theaters_page"))
+        return redirect(url_for("pages.index"))
     return render_template("register.html")
 
 
@@ -38,7 +43,8 @@ def movie_page(movie_id):
 @bp.get("/book/<int:showtime_id>")
 @page_login_required
 def book(showtime_id):
-    if not db.session.get(Showtime, showtime_id):
+    st = db.session.get(Showtime, showtime_id)
+    if not st:
         abort(404)
     return render_template("book.html", showtime_id=showtime_id)
 

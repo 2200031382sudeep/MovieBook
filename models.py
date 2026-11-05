@@ -6,7 +6,10 @@ from extensions import db
 
 def seat_sort_key(label):
     """Sorts A1, A2, A10, B1 in natural order."""
-    return (label[0], int(label[1:]))
+    m = re.match(r"([A-Za-z]+)(\d+)", str(label))
+    if m:
+        return (m.group(1).upper(), int(m.group(2)))
+    return (str(label), 0)
 
 
 class User(db.Model):
@@ -29,7 +32,14 @@ class User(db.Model):
         return self.role == "admin"
 
     def to_dict(self):
-        return {"id": self.id, "name": self.name, "email": self.email, "role": self.role}
+        return {
+            "id": self.id,
+            "name": self.name,
+            "email": self.email,
+            "role": self.role,
+            "is_admin": self.is_admin,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
 
 
 class Movie(db.Model):
@@ -48,10 +58,15 @@ class Movie(db.Model):
 
     def to_dict(self):
         return {
-            "id": self.id, "title": self.title, "description": self.description or "",
-            "genre": self.genre or "", "language": self.language or "",
-            "duration_min": self.duration_min, "rating": self.rating or 0,
-            "poster_url": self.poster_url or "", "is_active": bool(self.is_active),
+            "id": self.id,
+            "title": self.title,
+            "description": self.description or "",
+            "genre": self.genre or "",
+            "language": self.language or "",
+            "duration_min": self.duration_min,
+            "rating": self.rating or 0.0,
+            "poster_url": self.poster_url or "",
+            "is_active": bool(self.is_active),
         }
 
 
@@ -59,9 +74,9 @@ class Theater(db.Model):
     __tablename__ = "theaters"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
-    city = db.Column(db.String(80), nullable=False, default="Bengaluru", index=True)  # the city shown in the chooser
-    location = db.Column(db.String(200), nullable=False)                # area / address
-    rows = db.Column(db.Integer, nullable=False, default=8)             # A, B, C ...
+    city = db.Column(db.String(80), nullable=False, default="Bengaluru", index=True)
+    location = db.Column(db.String(200), nullable=False)
+    rows = db.Column(db.Integer, nullable=False, default=8)
     seats_per_row = db.Column(db.Integer, nullable=False, default=10)
 
     showtimes = db.relationship("Showtime", backref="theater", cascade="all, delete-orphan")
@@ -73,17 +88,22 @@ class Theater(db.Model):
     def valid_seat(self, label):
         if not isinstance(label, str):
             return False
-        m = re.fullmatch(r"([A-Z])(\d{1,2})", label)
+        m = re.fullmatch(r"([A-Z])(\d{1,2})", label.strip().upper())
         if not m:
             return False
         row = ord(m.group(1)) - 65
         number = int(m.group(2))
-        return row < self.rows and 1 <= number <= self.seats_per_row
+        return 0 <= row < self.rows and 1 <= number <= self.seats_per_row
 
     def to_dict(self):
         return {
-            "id": self.id, "name": self.name, "city": self.city, "location": self.location,
-            "rows": self.rows, "seats_per_row": self.seats_per_row, "capacity": self.capacity,
+            "id": self.id,
+            "name": self.name,
+            "city": self.city,
+            "location": self.location,
+            "rows": self.rows,
+            "seats_per_row": self.seats_per_row,
+            "capacity": self.capacity,
         }
 
 
@@ -93,12 +113,18 @@ class Showtime(db.Model):
     movie_id = db.Column(db.Integer, db.ForeignKey("movies.id"), nullable=False)
     theater_id = db.Column(db.Integer, db.ForeignKey("theaters.id"), nullable=False)
     start_time = db.Column(db.DateTime, nullable=False, index=True)
-    price = db.Column(db.Numeric(8, 2), nullable=False)  # price of one ticket
+    price = db.Column(db.Numeric(8, 2), nullable=False)
 
     def to_dict(self):
         return {
-            "id": self.id, "movie_id": self.movie_id, "theater_id": self.theater_id,
-            "movie_title": self.movie.title, "theater_name": self.theater.name,
+            "id": self.id,
+            "movie_id": self.movie_id,
+            "theater_id": self.theater_id,
+            "movie_title": self.movie.title if self.movie else "",
+            "movie_poster": (self.movie.poster_url or "") if self.movie else "",
+            "theater_name": self.theater.name if self.theater else "",
+            "theater_city": self.theater.city if self.theater else "",
+            "theater_location": self.theater.location if self.theater else "",
             "start_time": self.start_time.isoformat(timespec="minutes"),
             "price": float(self.price),
         }
@@ -110,7 +136,7 @@ class Booking(db.Model):
     reference = db.Column(db.String(12), unique=True, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     showtime_id = db.Column(db.Integer, db.ForeignKey("showtimes.id"), nullable=False)
-    seat_list = db.Column(db.String(255), nullable=False)   # "A1,A2,A3" (kept for display)
+    seat_list = db.Column(db.String(255), nullable=False)
     total = db.Column(db.Numeric(10, 2), nullable=False)
     status = db.Column(db.String(20), nullable=False, default="Confirmed")  # Confirmed | Cancelled
     created_at = db.Column(db.DateTime, default=datetime.now)
@@ -122,19 +148,36 @@ class Booking(db.Model):
     def to_dict(self):
         s = self.showtime
         return {
-            "id": self.id, "reference": self.reference, "status": self.status,
-            "seats": self.seat_list.split(","), "total": float(self.total),
+            "id": self.id,
+            "reference": self.reference,
+            "status": self.status,
+            "seats": [x.strip() for x in self.seat_list.split(",") if x.strip()],
+            "total": float(self.total),
             "created_at": self.created_at.isoformat(timespec="minutes"),
-            "user_name": self.user.name, "user_email": self.user.email,
-            "showtime": {"id": s.id, "start_time": s.start_time.isoformat(timespec="minutes"),
-                         "price": float(s.price)},
-            "movie": {"id": s.movie.id, "title": s.movie.title, "poster_url": s.movie.poster_url or ""},
-            "theater": {"name": s.theater.name, "location": s.theater.location},
+            "user_name": self.user.name if self.user else "",
+            "user_email": self.user.email if self.user else "",
+            "showtime": {
+                "id": s.id,
+                "start_time": s.start_time.isoformat(timespec="minutes"),
+                "price": float(s.price),
+            } if s else {},
+            "movie": {
+                "id": s.movie.id,
+                "title": s.movie.title,
+                "poster_url": s.movie.poster_url or "",
+                "language": s.movie.language or "",
+                "genre": s.movie.genre or "",
+            } if s and s.movie else {},
+            "theater": {
+                "id": s.theater.id,
+                "name": s.theater.name,
+                "city": s.theater.city,
+                "location": s.theater.location,
+            } if s and s.theater else {},
         }
 
 
 class BookingSeat(db.Model):
-    """One row per booked seat. The unique rule makes double-booking impossible."""
     __tablename__ = "booking_seats"
     id = db.Column(db.Integer, primary_key=True)
     booking_id = db.Column(db.Integer, db.ForeignKey("bookings.id"), nullable=False)

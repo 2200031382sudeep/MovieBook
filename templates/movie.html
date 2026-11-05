@@ -1,77 +1,185 @@
 {% extends "base.html" %}
-{% block title %}{{ movie.title }}{% endblock %}
+{% block title %}{{ movie.title }} - Movie Tickets & Showtimes{% endblock %}
+
 {% block content %}
-<div class="movie-head">
-  {% if movie.poster_url %}
-    <img class="poster" src="{{ movie.poster_url }}" alt="{{ movie.title }}">
-  {% else %}
-    <div class="poster poster-ph" style="width:200px">{{ movie.title[:1]|upper }}</div>
-  {% endif %}
-  <div class="details">
-    <h1>{{ movie.title }}</h1>
-    <div>
-      {% if movie.language %}<span class="pill">{{ movie.language }}</span>{% endif %}
-      {% if movie.genre %}<span class="pill">{{ movie.genre }}</span>{% endif %}
-      <span class="pill">{{ movie.duration_min }} min</span>
-      <span class="pill">&#9733; {{ '%.1f'|format(movie.rating) }}</span>
+<!-- Cinematic Hero Section -->
+<section class="bms-movie-hero">
+  <div class="bms-movie-hero-backdrop" style="background-image: url('{{ movie.poster_url }}');"></div>
+  <div class="bms-container">
+    <div class="bms-movie-hero-content">
+      <div class="movie-hero-poster">
+        {% if movie.poster_url %}
+          <img src="{{ movie.poster_url }}" alt="{{ movie.title }}">
+        {% else %}
+          <div class="bms-poster-placeholder">
+            <span class="placeholder-clapper">🎬</span>
+            <div class="placeholder-title">{{ movie.title }}</div>
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="movie-hero-info">
+        <h1 class="movie-hero-title">{{ movie.title }}</h1>
+
+        <!-- BMS Rating Card -->
+        <div class="bms-rating-box">
+          <div class="rating-stars">
+            <span>★</span> {{ '%.1f'|format(movie.rating) }}/10
+          </div>
+          <div class="rating-count">Audience Rating</div>
+        </div>
+
+        <!-- Languages & Formats Badges -->
+        <div class="movie-tags-row">
+          {% if movie.language %}
+            {% for lang in movie.language.split(',') %}
+              <span class="bms-chip">{{ lang.strip() }}</span>
+            {% endfor %}
+          {% endif %}
+          <span class="bms-chip" style="background:var(--bms-red)">2D</span>
+          <span class="bms-chip">3D</span>
+          <span class="bms-chip">IMAX 2D</span>
+        </div>
+
+        <div class="movie-hero-meta">
+          <span>{{ movie.duration_min }} mins</span> •
+          <span>{{ movie.genre }}</span> •
+          <span>UA 16+</span> •
+          <span>In Cinemas</span>
+        </div>
+
+        <p class="movie-hero-desc">{{ movie.description or "An unforgettable cinematic experience on the big screen with Dolby Atmos surround sound." }}</p>
+      </div>
     </div>
-    <p>{{ movie.description }}</p>
+  </div>
+</section>
+
+<!-- Sticky Date Picker Bar -->
+<div class="bms-showtimes-bar">
+  <div class="bms-container">
+    <div class="date-picker-row" id="date-picker-row"></div>
   </div>
 </div>
 
-<div class="toolbar">
-  <label for="city" style="margin:0;align-self:center">Location:</label>
-  <select id="city"></select>
+<!-- Showtimes Listings Section -->
+<div class="bms-container" style="margin-bottom:60px">
+  <div id="status" class="msg ok" style="display:none"></div>
+  <div id="shows"></div>
 </div>
-
-<div id="status"></div>
-<div id="shows"></div>
 {% endblock %}
 
 {% block scripts %}
 <script>
   const MOVIE_ID = {{ movie.id }};
-  const citySel = document.getElementById("city");
   const statusBox = document.getElementById("status");
   const showsBox = document.getElementById("shows");
+  const datePickerRow = document.getElementById("date-picker-row");
+  let selectedDateIndex = 0;
 
-  async function load() {
-    statusBox.textContent = "Loading shows...";
-    showsBox.innerHTML = "";
-    const params = new URLSearchParams();
-    if (citySel.value) params.set("city", citySel.value);
-    try {
-      const data = await api("/api/movies/" + MOVIE_ID + "?" + params);
+  function buildDatePicker() {
+    datePickerRow.innerHTML = "";
+    const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+    const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 
-      // group the shows by theater
-      const byTheater = new Map();
-      data.showtimes.forEach(s => {
-        if (!byTheater.has(s.theater.id)) byTheater.set(s.theater.id, { theater: s.theater, shows: [] });
-        byTheater.get(s.theater.id).shows.push(s);
+    for (let i = 0; i < 7; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+
+      const btn = h("button", "date-btn" + (i === selectedDateIndex ? " active" : ""));
+      btn.type = "button";
+
+      const dayLabel = i === 0 ? "TODAY" : (i === 1 ? "TOM" : days[d.getDay()]);
+      btn.appendChild(h("span", "date-day", dayLabel));
+      btn.appendChild(h("span", "date-num", String(d.getDate())));
+      btn.appendChild(h("span", "date-month", months[d.getMonth()]));
+
+      btn.addEventListener("click", () => {
+        selectedDateIndex = i;
+        document.querySelectorAll(".date-btn").forEach((b, idx) => b.classList.toggle("active", idx === i));
+        loadShows();
       });
 
-      byTheater.forEach(({ theater, shows }) => {
-        const card = h("div", "card");
-        card.appendChild(h("h3", "", theater.name));
-        card.appendChild(h("div", "place", theater.location + ", " + theater.city));
-        shows.forEach(s => {
-          const a = h("a", "show-btn");
-          a.href = "/book/" + s.id;
-          a.appendChild(document.createTextNode(fmtDateTime(s.start_time)));
-          a.appendChild(h("small", "", money(s.price)));
-          card.appendChild(a);
-        });
-        showsBox.appendChild(card);
-      });
-
-      statusBox.textContent = byTheater.size ? "" :
-        "No upcoming shows" + (citySel.value ? " in " + citySel.value : "") + ".";
-    } catch (e) {
-      statusBox.textContent = e.message;
+      datePickerRow.appendChild(btn);
     }
   }
 
-  citySel.addEventListener("change", () => { setCity(citySel.value); load(); });
-  fillCitySelect(citySel, "All locations").then(load);
+  async function loadShows() {
+    showsBox.innerHTML = "<div style='text-align:center;padding:40px;color:var(--bms-text-muted);'>Loading showtimes...</div>";
+    const city = getCity();
+    const params = new URLSearchParams();
+    if (city) params.set("city", city);
+
+    try {
+      const data = await api("/api/movies/" + MOVIE_ID + "?" + params);
+      showsBox.innerHTML = "";
+
+      const byTheater = new Map();
+      data.showtimes.forEach(s => {
+        if (!byTheater.has(s.theater.id)) {
+          byTheater.set(s.theater.id, { theater: s.theater, shows: [] });
+        }
+        byTheater.get(s.theater.id).shows.push(s);
+      });
+
+      if (!byTheater.size) {
+        const noShow = h("div", "", "No upcoming shows available" + (city ? " in " + city : "") + ". Try changing your location or pick another date.");
+        noShow.style.textAlign = "center";
+        noShow.style.padding = "50px 20px";
+        noShow.style.background = "#ffffff";
+        noShow.style.borderRadius = "var(--bms-radius-lg)";
+        noShow.style.border = "1px solid var(--bms-border)";
+        noShow.style.color = "var(--bms-text-muted)";
+        showsBox.appendChild(noShow);
+        return;
+      }
+
+      byTheater.forEach(({ theater, shows }) => {
+        const card = h("div", "bms-theater-card");
+
+        const top = h("div", "theater-card-top");
+        const nameBox = h("div", "theater-name-box");
+        const fav = h("span", "theater-fav-icon", "♡");
+        fav.title = "Save to favorites";
+        fav.addEventListener("click", (e) => {
+          e.stopPropagation();
+          fav.classList.toggle("active");
+          fav.textContent = fav.classList.contains("active") ? "♥" : "♡";
+        });
+        nameBox.appendChild(fav);
+
+        const titleBox = h("div");
+        titleBox.appendChild(h("div", "theater-card-title", theater.name));
+        titleBox.appendChild(h("div", "theater-card-loc", theater.location + ", " + theater.city));
+        nameBox.appendChild(titleBox);
+        top.appendChild(nameBox);
+
+        const amenities = h("div", "theater-amenities");
+        amenities.innerHTML = "<span>📱 M-Ticket</span> • <span>🍿 F&B Available</span> • <span>♿ Accessible</span>";
+        top.appendChild(amenities);
+        card.appendChild(top);
+
+        const grid = h("div", "showtimes-grid");
+        shows.forEach(s => {
+          const a = h("a", "bms-showtime-btn");
+          a.href = "/book/" + s.id;
+          a.appendChild(h("span", "showtime-time", fmtTime(s.start_time)));
+          a.appendChild(h("span", "showtime-price", money(s.price)));
+          grid.appendChild(a);
+        });
+        card.appendChild(grid);
+
+        showsBox.appendChild(card);
+      });
+    } catch (e) {
+      showsBox.innerHTML = "<div style='color:red;text-align:center;padding:30px;'>" + e.message + "</div>";
+    }
+  }
+
+  window.addEventListener("bms:city-changed", () => {
+    loadShows();
+  });
+
+  buildDatePicker();
+  loadShows();
 </script>
 {% endblock %}

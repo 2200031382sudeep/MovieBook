@@ -1,56 +1,243 @@
 {% extends "base.html" %}
-{% block title %}Movies{% endblock %}
+{% block title %}Now Showing - Movie Tickets & Showtimes{% endblock %}
+
 {% block content %}
-<h1>Now showing</h1>
+<!-- Hero Carousel of Current Movies -->
+<section class="bms-hero-carousel" id="hero-carousel">
+  <div class="carousel-track" id="carousel-track">
+    <div class="carousel-slide" style="background-image: url('https://assets-in.bmscdn.com/iedb/movies/images/mobile/thumbnail/xlarge/kalki-2898-ad-et00352941-1718275859.jpg');">
+      <div class="carousel-slide-overlay">
+        <div class="carousel-content">
+          <span class="carousel-badge">Now In Cinemas</span>
+          <h2 class="carousel-title">Kalki 2898 AD</h2>
+          <div class="carousel-meta">
+            <span>★ 8.9/10</span> •
+            <span>3h 01m</span> •
+            <span>Sci-Fi, Action</span> •
+            <span>Telugu, Hindi, Tamil</span>
+          </div>
+          <p class="carousel-desc">A modern avatar of Vishnu descends to earth in a dystopian future to protect humanity from dark forces.</p>
+          <a href="/movie/3" class="carousel-btn">🎟️ Book Tickets</a>
+        </div>
+      </div>
+    </div>
 
-<div class="toolbar">
-  <select id="city" aria-label="Location"></select>
-  <input id="q" type="search" placeholder="Search movies...">
+    <div class="carousel-slide" style="background-image: url('https://assets-in.bmscdn.com/iedb/movies/images/mobile/thumbnail/xlarge/devara--part-1-et00310216-1716382046.jpg');">
+      <div class="carousel-slide-overlay">
+        <div class="carousel-content">
+          <span class="carousel-badge">Blockbuster</span>
+          <h2 class="carousel-title">Devara: Part 1</h2>
+          <div class="carousel-meta">
+            <span>★ 8.4/10</span> •
+            <span>2h 58m</span> •
+            <span>Action, Drama</span> •
+            <span>Telugu, Hindi, Tamil</span>
+          </div>
+          <p class="carousel-desc">An epic action drama set against the coastal lands where fear and courage clash over generations.</p>
+          <a href="/movie/4" class="carousel-btn">🎟️ Book Tickets</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="carousel-slide" style="background-image: url('https://assets-in.bmscdn.com/iedb/movies/images/mobile/thumbnail/xlarge/pushpa-the-rule--part-2-et00356724-1712571796.jpg');">
+      <div class="carousel-slide-overlay">
+        <div class="carousel-content">
+          <span class="carousel-badge">Most Awaited</span>
+          <h2 class="carousel-title">Pushpa 2: The Rule</h2>
+          <div class="carousel-meta">
+            <span>★ 9.2/10</span> •
+            <span>3h 10m</span> •
+            <span>Action, Thriller</span> •
+            <span>Telugu, Hindi, Tamil</span>
+          </div>
+          <p class="carousel-desc">Pushpa Raj consolidates his empire while rival factions conspire against his invincible reign.</p>
+          <a href="/movie/5" class="carousel-btn">🎟️ Book Tickets</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button class="carousel-nav-btn prev" id="carousel-prev" aria-label="Previous Slide">‹</button>
+  <button class="carousel-nav-btn next" id="carousel-next" aria-label="Next Slide">›</button>
+
+  <div class="carousel-dots" id="carousel-dots">
+    <span class="carousel-dot active" data-index="0"></span>
+    <span class="carousel-dot" data-index="1"></span>
+    <span class="carousel-dot" data-index="2"></span>
+  </div>
+</section>
+
+<div class="bms-container">
+  <!-- Section Title & Quick Links -->
+  <div class="section-header">
+    <h2 class="section-title">Recommended Movies</h2>
+    <a href="/theaters" class="section-link">Find Theaters ›</a>
+  </div>
+
+  <!-- Filter Chips Bar -->
+  <div class="bms-filter-strip" id="filter-strip">
+    <button class="filter-chip active" data-filter="all">All Movies</button>
+    <button class="filter-chip" data-filter="Telugu">Telugu</button>
+    <button class="filter-chip" data-filter="Hindi">Hindi</button>
+    <button class="filter-chip" data-filter="English">English</button>
+    <button class="filter-chip" data-filter="Tamil">Tamil</button>
+    <button class="filter-chip" data-filter="Action">Action</button>
+    <button class="filter-chip" data-filter="Comedy">Comedy</button>
+    <button class="filter-chip" data-filter="Drama">Drama</button>
+    <button class="filter-chip" data-filter="Sci-Fi">Sci-Fi</button>
+  </div>
+
+  <!-- Status / Loading Indicator -->
+  <div id="status" class="msg ok" style="display:none"></div>
+
+  <!-- Hidden input synced with header search -->
+  <input id="q" type="hidden" value="">
+
+  <!-- Movies Grid -->
+  <div class="bms-movies-grid" id="grid"></div>
 </div>
-
-<div id="status"></div>
-<div class="grid" id="grid"></div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-  const citySel = document.getElementById("city");
-  const qInput = document.getElementById("q");
   const grid = document.getElementById("grid");
-  const statusBox = document.getElementById("status");
-  let timer = null;
+  const filterStrip = document.getElementById("filter-strip");
+  let allMovies = [];
+  let currentFilter = "all";
+  let searchTimer = null;
 
-  function movieCard(m) {
-    const a = h("a", "movie-card");
-    a.href = "/movie/" + m.id;
-    a.appendChild(posterElement(m));
-    const info = h("div", "info");
-    info.appendChild(h("div", "title", m.title));
-    info.appendChild(h("div", "muted", [m.language, m.genre].filter(Boolean).join(" • ")));
-    info.appendChild(h("div", "muted", "★ " + Number(m.rating).toFixed(1) + "  •  " + m.duration_min + " min"));
-    a.appendChild(info);
-    return a;
+  function createMovieCard(m) {
+    const card = h("a", "bms-movie-card");
+    card.href = "/movie/" + m.id;
+
+    const posterWrap = h("div", "bms-movie-poster-wrap");
+    posterWrap.appendChild(posterElement(m));
+
+    const ratingOverlay = h("div", "bms-rating-overlay");
+    const scoreBox = h("div", "bms-rating-score");
+    scoreBox.appendChild(h("span", "bms-rating-star", "★"));
+    scoreBox.appendChild(document.createTextNode(" " + Number(m.rating || 8.0).toFixed(1) + "/10"));
+    ratingOverlay.appendChild(scoreBox);
+    ratingOverlay.appendChild(h("div", "bms-rating-votes", m.duration_min + "m"));
+    posterWrap.appendChild(ratingOverlay);
+
+    card.appendChild(posterWrap);
+
+    const details = h("div", "bms-movie-details");
+    details.appendChild(h("div", "bms-movie-title", m.title));
+    details.appendChild(h("div", "bms-movie-genre", [m.language, m.genre].filter(Boolean).join(" • ")));
+
+    const badges = h("div", "bms-movie-badges");
+    badges.appendChild(h("span", "bms-format-tag", "2D"));
+    if ((m.genre || "").toLowerCase().includes("action") || (m.genre || "").toLowerCase().includes("sci-fi") || (m.genre || "").toLowerCase().includes("mythology")) {
+      badges.appendChild(h("span", "bms-format-tag", "3D"));
+      badges.appendChild(h("span", "bms-format-tag", "IMAX"));
+    }
+    details.appendChild(badges);
+
+    card.appendChild(details);
+    return card;
   }
 
-  async function load() {
+  function renderMovies(movies) {
+    grid.innerHTML = "";
+    let filtered = movies;
+
+    if (currentFilter !== "all") {
+      filtered = filtered.filter(m => {
+        const lang = (m.language || "").toLowerCase();
+        const genre = (m.genre || "").toLowerCase();
+        const f = currentFilter.toLowerCase();
+        return lang.includes(f) || genre.includes(f);
+      });
+    }
+
+    if (!filtered.length) {
+      const empty = h("div", "", "No movies match your filter or city selection.");
+      empty.style.gridColumn = "1 / -1";
+      empty.style.textAlign = "center";
+      empty.style.padding = "48px 20px";
+      empty.style.color = "var(--bms-text-muted)";
+      grid.appendChild(empty);
+      return;
+    }
+
+    filtered.forEach(m => grid.appendChild(createMovieCard(m)));
+  }
+
+  async function loadMovies() {
+    const city = getCity();
+    const q = (document.getElementById("q").value || "").trim();
     const params = new URLSearchParams();
-    if (citySel.value) params.set("city", citySel.value);
-    if (qInput.value.trim()) params.set("q", qInput.value.trim());
-    statusBox.textContent = "Loading...";
+    if (city) params.set("city", city);
+    if (q) params.set("q", q);
+
     try {
+      grid.innerHTML = "<div style='grid-column:1/-1;text-align:center;padding:36px;color:var(--bms-text-muted);'>Loading movies...</div>";
       const data = await api("/api/movies?" + params);
-      grid.innerHTML = "";
-      data.movies.forEach(m => grid.appendChild(movieCard(m)));
-      statusBox.textContent = data.movies.length ? "" :
-        "No movies found" + (citySel.value ? " in " + citySel.value : "") + ".";
+      allMovies = data.movies || [];
+      renderMovies(allMovies);
     } catch (e) {
-      statusBox.textContent = e.message;
+      grid.innerHTML = `<p style="grid-column:1/-1;color:red;text-align:center;padding:24px;">${e.message}</p>`;
     }
   }
 
-  citySel.addEventListener("change", () => { setCity(citySel.value); load(); });
-  qInput.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(load, 300); });
+  if (filterStrip) {
+    filterStrip.addEventListener("click", e => {
+      const btn = e.target.closest(".filter-chip");
+      if (!btn) return;
+      filterStrip.querySelectorAll(".filter-chip").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      currentFilter = btn.dataset.filter || "all";
+      renderMovies(allMovies);
+    });
+  }
 
-  fillCitySelect(citySel, "All locations").then(load);
+  window.addEventListener("bms:city-changed", () => {
+    loadMovies();
+  });
+
+  const globalSearch = document.getElementById("global-search-input");
+  if (globalSearch) {
+    globalSearch.addEventListener("input", e => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        document.getElementById("q").value = e.target.value;
+        loadMovies();
+      }, 250);
+    });
+  }
+
+  // Carousel
+  let currentSlide = 0;
+  const slides = document.querySelectorAll(".carousel-slide");
+  const track = document.getElementById("carousel-track");
+  const dots = document.querySelectorAll(".carousel-dot");
+  const prevBtn = document.getElementById("carousel-prev");
+  const nextBtn = document.getElementById("carousel-next");
+  let carouselTimer = null;
+
+  function showSlide(index) {
+    if (!slides.length) return;
+    currentSlide = (index + slides.length) % slides.length;
+    if (track) track.style.transform = `translateX(-${currentSlide * 100}%)`;
+    dots.forEach((d, i) => d.classList.toggle("active", i === currentSlide));
+  }
+
+  if (nextBtn) nextBtn.addEventListener("click", () => { showSlide(currentSlide + 1); resetCarousel(); });
+  if (prevBtn) prevBtn.addEventListener("click", () => { showSlide(currentSlide - 1); resetCarousel(); });
+
+  dots.forEach(d => {
+    d.addEventListener("click", e => {
+      showSlide(Number(e.target.dataset.index));
+      resetCarousel();
+    });
+  });
+
+  function startCarousel() { carouselTimer = setInterval(() => showSlide(currentSlide + 1), 5000); }
+  function resetCarousel() { clearInterval(carouselTimer); startCarousel(); }
+
+  startCarousel();
+  loadMovies();
 </script>
 {% endblock %}

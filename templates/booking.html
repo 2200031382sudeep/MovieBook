@@ -1,40 +1,108 @@
 {% extends "base.html" %}
-{% block title %}Booking {{ b.reference }}{% endblock %}
-{% block content %}
-<h1>Your booking</h1>
+{% block title %}M-Ticket #{{ b.reference }} - BookMyShow{% endblock %}
 
-<div class="panel ticket">
-  <dl>
-    <dt>Reference</dt><dd class="ref">{{ b.reference }}</dd>
-    <dt>Status</dt><dd class="status-{{ b.status }}">{{ b.status }}</dd>
-    <dt>Movie</dt><dd>{{ b.movie.title }}</dd>
-    <dt>Theater</dt><dd>{{ b.theater.name }}, {{ b.theater.location }}</dd>
-    <dt>Show time</dt><dd id="show-time" data-iso="{{ b.showtime.start_time }}">{{ b.showtime.start_time }}</dd>
-    <dt>Seats</dt><dd>{{ b.seats|join(", ") }}</dd>
-    <dt>Total</dt><dd id="total" data-amount="{{ b.total }}">{{ b.total }}</dd>
-    <dt>Booked by</dt><dd>{{ b.user_name }}</dd>
-  </dl>
-  <div id="msg" class="msg error"></div>
-  <p>
-    {% if b.status == "Confirmed" %}
-      <button class="btn danger" id="cancel-btn" type="button">Cancel booking</button>
-    {% endif %}
-    <a class="btn secondary" href="/my-bookings">My bookings</a>
-  </p>
+{% block content %}
+<div class="bms-container">
+  <div class="bms-ticket-container">
+    <div style="text-align:center;margin-bottom:20px;">
+      <h1 style="font-size:24px;font-weight:800;color:var(--bms-text-heading);margin-bottom:4px;">Booking Confirmed!</h1>
+      <p style="color:var(--bms-text-muted);font-size:13.5px;">Your digital M-Ticket is ready. Show this at the cinema entrance.</p>
+    </div>
+
+    <!-- BookMyShow M-Ticket Pass -->
+    <div class="bms-m-ticket">
+      <!-- Ticket Header Banner -->
+      <div class="ticket-header-banner">
+        <span class="ticket-logo-text">bookmyshow <span style="font-size:12px;opacity:0.85">M-TICKET</span></span>
+        <span class="ticket-booking-id">#{{ b.reference }}</span>
+      </div>
+
+      <!-- Movie Details Strip -->
+      <div class="ticket-movie-strip">
+        {% if b.movie.poster_url %}
+          <img class="ticket-movie-poster" src="{{ b.movie.poster_url }}" alt="{{ b.movie.title }}">
+        {% else %}
+          <div class="ticket-movie-poster" style="display:flex;align-items:center;justify-content:center;font-size:24px;background:#222;color:#fff;">🎬</div>
+        {% endif %}
+        <div class="ticket-movie-details">
+          <h2>{{ b.movie.title }}</h2>
+          <p>Telugu, Hindi • 2D • UA 16+</p>
+          <p style="margin-top:4px;font-size:12px;color:var(--bms-green);font-weight:600;">Status: <span class="status-{{ b.status }}">{{ b.status }}</span></p>
+        </div>
+      </div>
+
+      <!-- Perforated Cut Line with Ticket Notches -->
+      <div class="ticket-perforation"></div>
+
+      <!-- Grid of Details -->
+      <div class="ticket-info-grid">
+        <div class="ticket-field">
+          <label>Cinema / Theater</label>
+          <span>{{ b.theater.name }}</span>
+          <div style="font-size:12px;color:var(--bms-text-muted);margin-top:2px;">{{ b.theater.location }}</div>
+        </div>
+
+        <div class="ticket-field">
+          <label>Date & Showtime</label>
+          <span id="show-time" data-iso="{{ b.showtime.start_time }}">{{ b.showtime.start_time }}</span>
+          <div style="font-size:12px;color:var(--bms-text-muted);margin-top:2px;">Audi 1 • 4K Dolby Atmos</div>
+        </div>
+
+        <div class="ticket-field">
+          <label>Seats Booked</label>
+          <span class="ticket-seats-badge">{{ b.seats|join(", ") }}</span>
+          <div style="font-size:12px;color:var(--bms-text-muted);margin-top:2px;">{{ b.seats|length }} Ticket(s)</div>
+        </div>
+
+        <div class="ticket-field">
+          <label>Total Paid</label>
+          <span id="total" data-amount="{{ b.total }}">{{ b.total }}</span>
+          <div style="font-size:12px;color:var(--bms-text-muted);margin-top:2px;">Booked by {{ b.user_name }}</div>
+        </div>
+      </div>
+
+      <!-- QR Code & Barcode Scanner Simulator -->
+      <div class="ticket-barcode-wrap">
+        <div class="fake-qr">
+          <div>
+            <div style="font-weight:900;letter-spacing:1px">BMS-PASS</div>
+            <div style="font-size:8px;margin-top:2px">{{ b.reference }}</div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--bms-text-muted);">Scan this QR Code at the multiplex turnstile or ticket counter.</div>
+      </div>
+    </div>
+
+    <!-- Error/Notice Message Box -->
+    <div id="msg" class="msg error" style="margin-top:16px;"></div>
+
+    <!-- Ticket Actions -->
+    <div class="ticket-actions">
+      {% if b.status == "Confirmed" %}
+        <button class="bms-signin-btn" id="cancel-btn" type="button" style="background:#ef4444;flex:1;justify-content:center;padding:12px;">Cancel Booking</button>
+      {% endif %}
+      <a class="bms-signin-btn" href="/my-bookings" style="background:#333545;flex:1;justify-content:center;padding:12px;">View All Bookings</a>
+    </div>
+  </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
   const timeEl = document.getElementById("show-time");
-  timeEl.textContent = fmtDateTime(timeEl.dataset.iso);
+  if (timeEl && timeEl.dataset.iso) {
+    timeEl.textContent = fmtDateTime(timeEl.dataset.iso);
+  }
+
   const totalEl = document.getElementById("total");
-  totalEl.textContent = money(totalEl.dataset.amount);
+  if (totalEl && totalEl.dataset.amount) {
+    totalEl.textContent = money(totalEl.dataset.amount);
+  }
 
   const cancelBtn = document.getElementById("cancel-btn");
   if (cancelBtn) {
     cancelBtn.addEventListener("click", async () => {
-      if (!confirm("Cancel this booking?")) return;
+      if (!confirm("Are you sure you want to cancel this booking? Once cancelled, seats will be released.")) return;
       try {
         await api("/api/bookings/{{ b.id }}/cancel", "POST");
         window.location.reload();

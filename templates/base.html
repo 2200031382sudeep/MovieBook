@@ -3,30 +3,215 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}MovieBook{% endblock %} - MovieBook</title>
+  <title>{% block title %}Movie Tickets, Theaters & Showtimes{% endblock %} - BookMyShow</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎟️</text></svg>">
 </head>
 <body>
-  <nav class="nav">
-    <a class="brand" href="/">MovieBook</a>
-    <div class="links">
-      <a href="/">Movies</a>
-      {% if current_user %}
-        <a href="/theaters">Find theaters</a>
-        <a href="/my-bookings">My bookings</a>
-        {% if current_user.is_admin %}<a href="/admin">Admin</a>{% endif %}
-        <span class="who">Hi, {{ current_user.name }}</span>
-        <button id="logout-btn" type="button">Logout</button>
-      {% else %}
-        <a href="/login">Login</a>
-        <a href="/register">Register</a>
+  <!-- Header Wrapper -->
+  <header class="bms-header-wrapper">
+    <!-- Primary Topbar -->
+    <div class="bms-topbar">
+      <div class="bms-topbar-left">
+        <!-- Logo -->
+        <a class="bms-logo" href="/" title="BookMyShow">
+          <span class="bms-logo-book">book</span><span class="bms-logo-badge">my</span><span class="bms-logo-show">show</span>
+        </a>
+
+        <!-- Global Search Bar -->
+        <div class="bms-search-container">
+          <div class="bms-search-box">
+            <svg class="bms-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="search" id="global-search-input" placeholder="Search for Movies or Theaters..." autocomplete="off">
+          </div>
+        </div>
+      </div>
+
+      <!-- Topbar Right Controls -->
+      <div class="bms-topbar-right">
+        <!-- City Selector Trigger -->
+        <div class="bms-city-btn" id="bms-city-btn" role="button" tabindex="0" title="Change city">
+          <svg class="bms-pin-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+          </svg>
+          <span id="selected-city-label">Select City</span>
+          <svg class="bms-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </div>
+
+        {% if current_user %}
+          <!-- User Profile Trigger (Slides down menu on click) -->
+          <div class="bms-profile-trigger" id="bms-profile-btn" role="button" tabindex="0" title="Account Menu">
+            <div class="bms-avatar">{{ current_user.name[:1]|upper }}</div>
+            <span class="bms-user-name">Hi, {{ current_user.name.split()[0] }}</span>
+            <svg class="bms-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </div>
+        {% else %}
+          <a href="/login" class="bms-signin-btn">Sign In</a>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Secondary Navigation Bar -->
+    <nav class="bms-subnav">
+      <div class="bms-subnav-container">
+        <div class="bms-subnav-left">
+          <a href="/" id="nav-movies">Movies</a>
+          <a href="/theaters" id="nav-theaters">Theaters</a>
+          {% if current_user %}
+            <a href="/my-bookings" id="nav-bookings">My Bookings</a>
+          {% endif %}
+        </div>
+        <div class="bms-subnav-right">
+          {% if current_user and current_user.is_admin %}
+            <a href="/admin" style="color:var(--bms-red);font-weight:700;">⚙️ Admin Portal</a>
+          {% endif %}
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  {% if current_user %}
+  <!-- ======================================================================
+       PROFILE SLIDE-DOWN MENU (Clean, Working Options)
+       ====================================================================== -->
+  <div id="bms-profile-backdrop" class="bms-profile-backdrop"></div>
+  <aside id="bms-profile-dropdown" class="bms-profile-dropdown" aria-label="User Profile Menu">
+    <!-- Header inside slide-down -->
+    <div class="profile-dropdown-header">
+      <div class="profile-user-summary">
+        <div class="profile-user-avatar">{{ current_user.name[:1]|upper }}</div>
+        <div class="profile-user-details">
+          <h3>Hi, {{ current_user.name }}</h3>
+          <p>{{ current_user.email }}</p>
+          {% if current_user.is_admin %}
+            <span class="profile-admin-badge">Admin Access</span>
+          {% else %}
+            <span style="font-size:11px;color:#94a3b8;display:block;margin-top:2px;">Verified Member</span>
+          {% endif %}
+        </div>
+      </div>
+      <button id="bms-profile-close" class="profile-close-btn" aria-label="Close Profile Menu">✕</button>
+    </div>
+
+    <!-- Profile Options Menu (Clean & Real) -->
+    <div class="profile-options-list">
+      <!-- 1. My Bookings / Orders -->
+      <a href="/my-bookings" class="profile-option-item">
+        <div class="profile-option-icon">🎟️</div>
+        <div class="profile-option-info">
+          <div class="profile-option-title">My Bookings</div>
+          <div class="profile-option-sub">View tickets & booking history</div>
+        </div>
+        <span class="profile-option-arrow">›</span>
+      </a>
+
+      <!-- 2. Theaters -->
+      <a href="/theaters" class="profile-option-item">
+        <div class="profile-option-icon">🎭</div>
+        <div class="profile-option-info">
+          <div class="profile-option-title">Browse Theaters</div>
+          <div class="profile-option-sub">Find cinema halls in your city</div>
+        </div>
+        <span class="profile-option-arrow">›</span>
+      </a>
+
+      <!-- 3. Change City -->
+      <div class="profile-option-item" id="drawer-change-city" role="button">
+        <div class="profile-option-icon">📍</div>
+        <div class="profile-option-info">
+          <div class="profile-option-title">Change City</div>
+          <div class="profile-option-sub">Current: <strong id="drawer-city-name" style="color:var(--bms-red)">Select City</strong></div>
+        </div>
+        <span class="profile-option-arrow">›</span>
+      </div>
+
+      {% if current_user.is_admin %}
+      <!-- 4. Admin Portal -->
+      <a href="/admin" class="profile-option-item admin-highlight">
+        <div class="profile-option-icon" style="background:#fee2e2;color:var(--bms-red)">⚙️</div>
+        <div class="profile-option-info">
+          <div class="profile-option-title" style="color:var(--bms-red)">Admin Portal</div>
+          <div class="profile-option-sub">Manage movies, theaters, showtimes & prices</div>
+        </div>
+        <span class="profile-option-arrow">›</span>
+      </a>
       {% endif %}
     </div>
-  </nav>
 
+    <!-- Sign Out Button -->
+    <div class="profile-dropdown-footer">
+      <button id="drawer-logout-btn" class="profile-logout-btn" type="button">
+        🚪 Sign Out
+      </button>
+    </div>
+  </aside>
+  {% endif %}
+
+  <!-- ======================================================================
+       CITY SELECTION MODAL
+       ====================================================================== -->
+  <div id="bms-city-modal" class="bms-city-modal-backdrop" aria-hidden="true">
+    <div class="bms-city-modal" role="dialog" aria-modal="true">
+      <div class="city-modal-header">
+        <div class="city-modal-search">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="city-modal-input" placeholder="Search for your city..." autocomplete="off">
+        </div>
+        <button id="city-modal-close" class="city-modal-close" aria-label="Close modal">✕</button>
+      </div>
+
+      <div class="city-modal-body">
+        <div class="popular-cities-title">Popular Cities</div>
+        <div class="popular-cities-grid" id="popular-cities-grid"></div>
+
+        <div class="all-cities-section">
+          <h4>All Cities</h4>
+          <div class="all-cities-list" id="all-cities-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main View Content -->
   <main>
     {% block content %}{% endblock %}
   </main>
+
+  <!-- Clean Footer -->
+  <footer class="bms-footer">
+    <div class="footer-bottom">
+      <div class="footer-logo">
+        <span class="bms-logo-book">book</span><span class="bms-logo-badge">my</span><span class="bms-logo-show">show</span>
+      </div>
+      <div class="footer-links">
+        <a href="/">Movies</a>
+        <a href="/theaters">Theaters</a>
+        {% if current_user %}
+          <a href="/my-bookings">My Bookings</a>
+          {% if current_user.is_admin %}
+            <a href="/admin">Admin Portal</a>
+          {% endif %}
+        {% else %}
+          <a href="/login">Sign In</a>
+          <a href="/register">Register</a>
+        {% endif %}
+      </div>
+      <p class="footer-copyright">
+        © 2026 BookMyShow Movie Ticket Booking System.<br>
+        Simple, clean, and fast cinema tickets booking.
+      </p>
+    </div>
+  </footer>
 
   <script src="{{ url_for('static', filename='js/common.js') }}"></script>
   {% block scripts %}{% endblock %}

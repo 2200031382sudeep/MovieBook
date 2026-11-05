@@ -1,18 +1,99 @@
 {% extends "base.html" %}
-{% block title %}Choose seats{% endblock %}
+{% block title %}Select Seats - BookMyShow{% endblock %}
+
 {% block content %}
-<h1 id="movie-title">Choose your seats</h1>
-<p class="muted" id="show-info"></p>
+<!-- Top Seat Header -->
+<div class="bms-seat-header">
+  <div class="seat-header-left">
+    <h2 id="movie-title">Choose your seats</h2>
+    <p id="show-info">Loading show details...</p>
+  </div>
+  <div class="seat-counter-wrap">
+    <a href="javascript:history.back()" class="bms-signin-btn" style="background:#4b5563;padding:6px 14px;font-size:12px;">← Back</a>
+  </div>
+</div>
 
-<div class="panel">
-  <div class="screen">SCREEN</div>
-  <div class="seat-map" id="seat-map"></div>
-  <div class="legend"><span>Available</span><span class="sel">Selected</span><span class="tkn">Booked</span></div>
+<div class="seat-stage-container">
+  <!-- Seat Map Container -->
+  <div class="seat-tier-header" id="tier-label">PREMIUM SEATS (ALL ROWS)</div>
+  <div class="bms-seat-grid" id="seat-map"></div>
 
-  <div id="msg" class="msg error"></div>
-  <div class="summary">
-    <div id="summary" class="muted">No seats selected.</div>
-    <button class="btn" id="book-btn" disabled>Book tickets</button>
+  <!-- Curved Cinema Screen -->
+  <div class="bms-cinema-screen">
+    <div class="screen-curve"></div>
+    <div class="screen-label">All eyes this way please! Screen is here</div>
+  </div>
+
+  <!-- Seat Legend -->
+  <div class="bms-seat-legend">
+    <div class="legend-item">
+      <div class="legend-box available"></div>
+      <span>Available</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-box selected"></div>
+      <span>Selected</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-box booked"></div>
+      <span>Booked</span>
+    </div>
+  </div>
+
+  <div id="msg" class="msg error" style="margin-top:20px"></div>
+</div>
+
+<!-- Sticky Bottom Summary Bar -->
+<div class="bms-booking-footer-bar">
+  <div class="booking-summary-info">
+    <div class="summary-seats" id="summary-seats">No seats selected</div>
+    <div class="summary-price" id="summary-price">Select up to 10 seats</div>
+  </div>
+  <button class="bms-pay-btn" id="review-btn" disabled>Review & Book</button>
+</div>
+
+<!-- ==========================================================================
+     BOOKING SUMMARY & CONFIRMATION MODAL (Step 7 & 8)
+     ========================================================================== -->
+<div id="summary-modal" class="bms-city-modal-backdrop" aria-hidden="true">
+  <div class="bms-city-modal" style="width:520px;padding:24px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;border-bottom:1px solid var(--bms-border);padding-bottom:12px;">
+      <h3 style="font-size:20px;font-weight:800;color:var(--bms-text-heading);">Booking Summary</h3>
+      <button class="city-modal-close" id="close-summary-modal">✕</button>
+    </div>
+
+    <!-- Summary Details Card -->
+    <div style="background:#f8fafc;border:1px solid var(--bms-border);border-radius:var(--bms-radius);padding:18px;margin-bottom:18px;">
+      <h4 id="modal-movie-title" style="font-size:18px;font-weight:700;color:var(--bms-text-heading);margin-bottom:4px;">Movie Title</h4>
+      <p id="modal-theater-name" style="font-size:13.5px;color:var(--bms-text-muted);margin-bottom:12px;">Theater & Location</p>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;border-top:1px dashed #cbd5e1;padding-top:12px;">
+        <div>
+          <span style="color:var(--bms-text-muted);display:block;">Date & Time</span>
+          <strong id="modal-show-time" style="color:var(--bms-text-heading);">—</strong>
+        </div>
+        <div>
+          <span style="color:var(--bms-text-muted);display:block;">Selected Seats</span>
+          <strong id="modal-seats-list" style="color:var(--bms-red);font-size:15px;">—</strong>
+        </div>
+        <div>
+          <span style="color:var(--bms-text-muted);display:block;">Price per Ticket</span>
+          <strong id="modal-seat-price">—</strong>
+        </div>
+        <div>
+          <span style="color:var(--bms-text-muted);display:block;">Total Amount</span>
+          <strong id="modal-total-price" style="font-size:17px;color:var(--bms-green);">—</strong>
+        </div>
+      </div>
+    </div>
+
+    <div id="modal-err-msg" class="msg error" style="display:none;margin-bottom:14px;"></div>
+
+    <!-- Confirm and Cancel Buttons -->
+    <div style="display:flex;gap:12px;">
+      <button type="button" id="modal-back-btn" class="bms-signin-btn" style="background:#6b7280;flex:1;justify-content:center;padding:12px;">Change Seats</button>
+      <button type="button" id="confirm-booking-btn" class="bms-primary-btn" style="flex:2;padding:12px;">Confirm & Book Tickets</button>
+    </div>
   </div>
 </div>
 {% endblock %}
@@ -22,48 +103,74 @@
   const SHOWTIME_ID = {{ showtime_id }};
   const MAX_SEATS = 10;
   const map = document.getElementById("seat-map");
-  const summary = document.getElementById("summary");
-  const bookBtn = document.getElementById("book-btn");
+  const summarySeats = document.getElementById("summary-seats");
+  const summaryPrice = document.getElementById("summary-price");
+  const reviewBtn = document.getElementById("review-btn");
+  const confirmBtn = document.getElementById("confirm-booking-btn");
+  const summaryModal = document.getElementById("summary-modal");
+  const closeSummaryModal = document.getElementById("close-summary-modal");
+  const modalBackBtn = document.getElementById("modal-back-btn");
+  const modalErrMsg = document.getElementById("modal-err-msg");
   const msg = document.getElementById("msg");
+
   const selected = new Set();
   let price = 0;
   let isPast = false;
+  let showtimeData = null;
 
-  function showError(text) { msg.textContent = text; msg.classList.add("show"); }
+  function showError(text) {
+    msg.textContent = text;
+    msg.classList.add("show");
+  }
 
   function updateSummary() {
     const seats = [...selected].sort((a, b) => a[0].localeCompare(b[0]) || Number(a.slice(1)) - Number(b.slice(1)));
-    summary.textContent = seats.length
-      ? seats.join(", ") + "  •  " + money(price * seats.length)
-      : "No seats selected.";
-    bookBtn.disabled = !seats.length || isPast;
+    if (seats.length) {
+      const totalAmount = price * seats.length;
+      summarySeats.textContent = seats.join(", ") + " (" + seats.length + " " + (seats.length === 1 ? "Ticket" : "Tickets") + ")";
+      summaryPrice.innerHTML = "Total: <strong>" + money(totalAmount) + "</strong>";
+      reviewBtn.textContent = "Review & Book (" + money(totalAmount) + ")";
+      reviewBtn.disabled = isPast;
+    } else {
+      summarySeats.textContent = "No seats selected";
+      summaryPrice.textContent = "Select up to " + MAX_SEATS + " seats";
+      reviewBtn.textContent = "Review & Book";
+      reviewBtn.disabled = true;
+    }
   }
 
   function drawSeats(theater, taken) {
     map.innerHTML = "";
     const takenSet = new Set(taken);
+
     for (let r = 0; r < theater.rows; r++) {
       const letter = String.fromCharCode(65 + r);
       const row = h("div", "seat-row");
-      row.appendChild(h("div", "row-label", letter));
+      row.appendChild(h("div", "seat-row-letter", letter));
+
       for (let n = 1; n <= theater.seats_per_row; n++) {
         const label = letter + n;
-        const btn = h("button", "seat", String(n));
+        const btn = h("button", "bms-seat", String(n));
         btn.type = "button";
         btn.title = label;
+
         if (takenSet.has(label) || isPast) {
           btn.classList.add("taken");
           btn.disabled = true;
           selected.delete(label);
         } else {
           if (selected.has(label)) btn.classList.add("selected");
+
           btn.addEventListener("click", () => {
             msg.classList.remove("show");
             if (selected.has(label)) {
               selected.delete(label);
               btn.classList.remove("selected");
             } else {
-              if (selected.size >= MAX_SEATS) { showError("You can select at most " + MAX_SEATS + " seats."); return; }
+              if (selected.size >= MAX_SEATS) {
+                showError("You can select a maximum of " + MAX_SEATS + " seats at a time.");
+                return;
+              }
               selected.add(label);
               btn.classList.add("selected");
             }
@@ -77,37 +184,76 @@
     updateSummary();
   }
 
-  async function load() {
+  async function loadShowtime() {
     try {
       const data = await api("/api/showtimes/" + SHOWTIME_ID);
+      showtimeData = data;
       price = data.showtime.price;
       isPast = data.past;
+
       document.getElementById("movie-title").textContent = data.movie.title;
       document.getElementById("show-info").textContent =
-        data.theater.name + ", " + data.theater.location + ", " + data.theater.city +
-        "  •  " + fmtDateTime(data.showtime.start_time) + "  •  " + money(price) + " per seat";
-      if (isPast) showError("This show has already started.");
+        data.theater.name + ": " + data.theater.location + ", " + data.theater.city +
+        " | " + fmtDateTime(data.showtime.start_time) + " | " + money(price) + " per seat";
+
+      if (isPast) showError("This show has already started. Booking is closed.");
       drawSeats(data.theater, data.taken);
-      return data;
     } catch (e) {
-      if (e.status === 401) { window.location.href = "/login?next=" + encodeURIComponent(location.pathname); return; }
+      if (e.status === 401) {
+        window.location.href = "/login?next=" + encodeURIComponent(location.pathname);
+        return;
+      }
       showError(e.message);
     }
   }
 
-  bookBtn.addEventListener("click", async () => {
-    msg.classList.remove("show");
-    bookBtn.disabled = true;
+  // Open Summary Modal (Step 7)
+  reviewBtn.addEventListener("click", () => {
+    if (!selected.size || isPast) return;
+    const seats = [...selected].sort((a, b) => a[0].localeCompare(b[0]) || Number(a.slice(1)) - Number(b.slice(1)));
+    const totalAmount = price * seats.length;
+
+    document.getElementById("modal-movie-title").textContent = showtimeData.movie.title;
+    document.getElementById("modal-theater-name").textContent = showtimeData.theater.name + " (" + showtimeData.theater.location + ", " + showtimeData.theater.city + ")";
+    document.getElementById("modal-show-time").textContent = fmtDateTime(showtimeData.showtime.start_time);
+    document.getElementById("modal-seats-list").textContent = seats.join(", ") + " (" + seats.length + " seats)";
+    document.getElementById("modal-seat-price").textContent = money(price);
+    document.getElementById("modal-total-price").textContent = money(totalAmount);
+
+    modalErrMsg.style.display = "none";
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = "Confirm & Pay " + money(totalAmount);
+    summaryModal.classList.add("open");
+  });
+
+  function closeSummary() {
+    summaryModal.classList.remove("open");
+  }
+
+  closeSummaryModal.addEventListener("click", closeSummary);
+  modalBackBtn.addEventListener("click", closeSummary);
+
+  // Confirm Booking (Step 8)
+  confirmBtn.addEventListener("click", async () => {
+    modalErrMsg.style.display = "none";
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = "Booking tickets...";
+
     try {
-      const data = await api("/api/bookings", "POST", { showtime_id: SHOWTIME_ID, seats: [...selected] });
+      const data = await api("/api/bookings", "POST", {
+        showtime_id: SHOWTIME_ID,
+        seats: [...selected],
+      });
       window.location.href = "/booking/" + data.booking.reference;
-    } catch (e) {
-      showError(e.message);
-      if (e.status === 409) await load();   // someone took a seat: refresh the map
-      updateSummary();
+    } catch (err) {
+      modalErrMsg.textContent = err.message;
+      modalErrMsg.style.display = "block";
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = "Try Again";
+      if (err.status === 409) await loadShowtime();
     }
   });
 
-  load();
+  loadShowtime();
 </script>
 {% endblock %}

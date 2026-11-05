@@ -1,9 +1,16 @@
 {% extends "base.html" %}
-{% block title %}My bookings{% endblock %}
+{% block title %}Your Orders & Tickets - BookMyShow{% endblock %}
+
 {% block content %}
-<h1>My bookings</h1>
-<div id="status"></div>
-<div id="list"></div>
+<div class="bms-container" style="margin: 36px auto 60px;">
+  <div class="section-header">
+    <h1 class="section-title">Your Orders</h1>
+    <a href="/" class="section-link">Browse More Movies ›</a>
+  </div>
+
+  <div id="status" class="msg ok" style="display:none"></div>
+  <div id="list" style="display:flex;flex-direction:column;gap:16px;"></div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -11,33 +18,78 @@
   const statusBox = document.getElementById("status");
   const list = document.getElementById("list");
 
-  async function load() {
-    statusBox.textContent = "Loading...";
+  async function loadBookings() {
+    list.innerHTML = "<div style='text-align:center;padding:40px;color:var(--bms-text-muted);'>Loading your orders...</div>";
     try {
       const data = await api("/api/bookings");
       list.innerHTML = "";
+
+      if (!data.bookings.length) {
+        const empty = h("div");
+        empty.style.textAlign = "center";
+        empty.style.padding = "60px 20px";
+        empty.style.background = "#ffffff";
+        empty.style.borderRadius = "var(--bms-radius-lg)";
+        empty.style.border = "1px solid var(--bms-border)";
+        empty.innerHTML = `
+          <div style="font-size:48px;margin-bottom:12px;">🎟️</div>
+          <h3 style="font-size:18px;font-weight:700;color:var(--bms-text-heading);margin-bottom:6px;">No bookings found</h3>
+          <p style="color:var(--bms-text-muted);font-size:13.5px;margin-bottom:18px;">Looks like you haven't booked any movie tickets yet.</p>
+          <a href="/" class="bms-signin-btn" style="display:inline-block;padding:10px 24px;">Explore Movies</a>
+        `;
+        list.appendChild(empty);
+        return;
+      }
+
       data.bookings.forEach(b => {
-        const card = h("div", "card");
-        const title = h("h3");
-        const link = h("a", "", b.movie.title);
+        const card = h("div", "bms-theater-card");
+        card.style.display = "flex";
+        card.style.flexWrap = "wrap";
+        card.style.justifyContent = "space-between";
+        card.style.alignItems = "center";
+        card.style.gap = "18px";
+
+        const left = h("div");
+        const titleRow = h("div", "", "");
+        const link = h("a", "theater-card-title", b.movie.title);
         link.href = "/booking/" + b.reference;
-        title.appendChild(link);
-        card.appendChild(title);
-        card.appendChild(h("div", "place", b.theater.name + ", " + b.theater.location + "  •  " + fmtDateTime(b.showtime.start_time)));
-        const line = h("div");
-        line.appendChild(document.createTextNode("Seats: " + b.seats.join(", ") + "  •  " + money(b.total) + "  •  "));
-        line.appendChild(h("span", "status-" + b.status, b.status));
-        line.appendChild(document.createTextNode("  •  Ref "));
-        line.appendChild(h("span", "ref", b.reference));
-        card.appendChild(line);
+        link.style.color = "var(--bms-text-heading)";
+        titleRow.appendChild(link);
+        left.appendChild(titleRow);
+
+        const place = h("div", "theater-card-loc", b.theater.name + " (" + b.theater.location + ") • " + fmtDateTime(b.showtime.start_time));
+        place.style.margin = "4px 0 8px";
+        left.appendChild(place);
+
+        const meta = h("div", "muted", "Seats: " + b.seats.join(", ") + " | Paid: " + money(b.total) + " | Booking ID: #" + b.reference);
+        left.appendChild(meta);
+        card.appendChild(left);
+
+        const right = h("div");
+        right.style.display = "flex";
+        right.style.alignItems = "center";
+        right.style.gap = "14px";
+
+        const statusBadge = h("span", "status-" + b.status, b.status);
+        right.appendChild(statusBadge);
+
+        const ticketBtn = h("a", "bms-signin-btn", "View M-Ticket");
+        ticketBtn.href = "/booking/" + b.reference;
+        ticketBtn.style.padding = "8px 16px";
+        right.appendChild(ticketBtn);
+
+        card.appendChild(right);
         list.appendChild(card);
       });
-      statusBox.textContent = data.bookings.length ? "" : "You have no bookings yet.";
     } catch (e) {
-      if (e.status === 401) { window.location.href = "/login?next=/my-bookings"; return; }
-      statusBox.textContent = e.message;
+      if (e.status === 401) {
+        window.location.href = "/login?next=/my-bookings";
+        return;
+      }
+      list.innerHTML = "<div style='color:red;text-align:center;padding:30px;'>" + e.message + "</div>";
     }
   }
-  load();
+
+  loadBookings();
 </script>
 {% endblock %}

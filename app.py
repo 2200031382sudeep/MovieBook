@@ -11,19 +11,16 @@ def create_app():
     app.config.from_object(Config)
 
     db.init_app(app)
-    import models  # noqa: F401  (so SQLAlchemy knows the tables)
+    import models  # noqa: F401  (ensure SQLAlchemy models are registered)
     register_blueprints(app)
 
-    from theater_search import bp as theater_search_bp  # theater search page + API
-    app.register_blueprint(theater_search_bp)
-
-    # Create the tables in MySQL the first time (does nothing if they already exist).
+    # Initialize tables if they do not exist
     with app.app_context():
         try:
             db.create_all()
         except Exception as exc:
-            print("\n*** Could not connect to MySQL. Check DB_PASSWORD in your .env file,")
-            print("*** that MySQL is running, and that the database exists. Details:\n", exc)
+            print("\n*** Could not connect to MySQL. Check your .env file credentials and MySQL service.")
+            print("*** Details:\n", exc)
             raise
 
     @app.context_processor
@@ -32,22 +29,29 @@ def create_app():
 
     @app.before_request
     def api_writes_must_be_json():
-        """Simple CSRF protection: another website cannot send JSON to our API with your cookie."""
+        """CSRF protection: write requests to API must supply a JSON content-type."""
         if request.path.startswith("/api/") and request.method in ("POST", "PUT", "PATCH", "DELETE"):
-            if not request.is_json:
-                return jsonify(error="Requests must be JSON."), 415
+            # Only enforce if request carries a body payload
+            if request.content_length and not request.is_json:
+                return jsonify(error="API requests with body must be JSON format."), 415
 
     @app.errorhandler(404)
     def not_found(_):
         if request.path.startswith("/api/"):
-            return jsonify(error="Not found."), 404
+            return jsonify(error="Resource not found."), 404
         return render_template("error.html", code=404, message="We couldn't find that page."), 404
 
     @app.errorhandler(403)
     def forbidden(_):
         if request.path.startswith("/api/"):
-            return jsonify(error="Not allowed."), 403
-        return render_template("error.html", code=403, message="You don't have permission to open this page."), 403
+            return jsonify(error="Permission denied."), 403
+        return render_template("error.html", code=403, message="You don't have permission to view this page."), 403
+
+    @app.errorhandler(500)
+    def server_error(_):
+        if request.path.startswith("/api/"):
+            return jsonify(error="An internal server error occurred."), 500
+        return render_template("error.html", code=500, message="An internal server error occurred. Please try again later."), 500
 
     return app
 
@@ -55,4 +59,4 @@ def create_app():
 app = create_app()
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host="127.0.0.1", port=5000)

@@ -1,19 +1,35 @@
 {% extends "base.html" %}
-{% block title %}Find theaters{% endblock %}
+{% block title %}Cinemas & Theaters Near You - BookMyShow{% endblock %}
+
 {% block content %}
-<h1>Find theaters</h1>
+<div class="bms-container" style="margin: 36px auto 60px;">
+  <div class="section-header">
+    <h1 class="section-title">Theaters & Cinemas</h1>
+    <span style="color:var(--bms-text-muted);font-size:14px;">Find cinema halls and movie screens in your city</span>
+  </div>
 
-<form class="toolbar" id="search-form" autocomplete="off">
-  <input id="location" type="search" list="city-list" placeholder="Search theater location (city or area)..." style="flex:2 1 300px">
-  <datalist id="city-list"></datalist>
-  <input id="q" type="search" placeholder="Theater name (optional)">
-  <button class="btn" type="submit">Search</button>
-  <button class="btn secondary" type="button" id="clear">Clear</button>
-</form>
+  <!-- Search Toolbar -->
+  <form class="bms-theater-card" id="search-form" autocomplete="off" style="margin-bottom:20px;padding:16px 20px;">
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+      <div style="flex:2 1 260px;position:relative;">
+        <input id="location" type="search" list="city-list" placeholder="Search by city or area (e.g. Hyderabad, Banjara Hills)..." style="width:100%;padding:10px 14px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);outline:none;">
+        <datalist id="city-list"></datalist>
+      </div>
+      <div style="flex:1 1 200px;">
+        <input id="q" type="search" placeholder="Theater name (optional)..." style="width:100%;padding:10px 14px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);outline:none;">
+      </div>
+      <button class="bms-signin-btn" type="submit" style="padding:10px 24px;">Search</button>
+      <button class="bms-signin-btn" type="button" id="clear" style="background:#4b5563;padding:10px 18px;">Clear</button>
+    </div>
+  </form>
 
-<div id="chips" style="margin-bottom:12px"></div>
-<div id="status"></div>
-<div id="results"></div>
+  <!-- City Chips Bar -->
+  <div id="chips" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px;"></div>
+
+  <!-- Search Status & Results -->
+  <div id="status" style="margin-bottom:16px;font-size:13.5px;color:var(--bms-text-muted);"></div>
+  <div id="results"></div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -25,27 +41,29 @@
   const cityList = document.getElementById("city-list");
   let timer = null;
 
-  locInput.value = getCity();   // the location chosen earlier
+  locInput.value = getCity();
 
-  // Suggestions in the box + quick-pick chips, one per city.
   async function loadCities() {
     try {
-      const data = await api("/api/theater-cities");
+      const data = await api("/api/cities");
       const chips = document.getElementById("chips");
+      chips.innerHTML = "";
+      cityList.innerHTML = "";
       data.cities.forEach(city => {
         cityList.appendChild(new Option(city, city));
-        const chip = h("button", "pill", city);
+        const chip = h("button", "filter-chip", city);
         chip.type = "button";
-        chip.style.cursor = "pointer";
-        chip.style.border = "0";
-        chip.addEventListener("click", () => { locInput.value = city; search(); });
+        chip.addEventListener("click", () => {
+          locInput.value = city;
+          setCity(city);
+          searchTheaters();
+        });
         chips.appendChild(chip);
       });
-    } catch (e) { /* suggestions are optional */ }
+    } catch (e) { /* suggestions optional */ }
   }
 
-  // Theaters are separated into one section per city.
-  function render(theaters) {
+  function renderTheaters(theaters) {
     resultsBox.innerHTML = "";
     const byCity = new Map();
     theaters.forEach(t => {
@@ -53,51 +71,103 @@
       byCity.get(t.city).push(t);
     });
 
+    if (!theaters.length) {
+      resultsBox.innerHTML = `
+        <div style="background:#fff;border:1px solid var(--bms-border);border-radius:var(--bms-radius-lg);padding:50px 20px;text-align:center;">
+          <div style="font-size:42px;margin-bottom:10px;">🎭</div>
+          <h3 style="font-size:17px;font-weight:700;color:var(--bms-text-heading);margin-bottom:6px;">No cinemas found</h3>
+          <p style="color:var(--bms-text-muted);font-size:13.5px;">Try searching for another area or select a different city.</p>
+        </div>
+      `;
+      return;
+    }
+
     byCity.forEach((list, city) => {
       const section = h("section");
-      section.appendChild(h("h2", "", city + " (" + list.length + ")"));
+      section.style.marginBottom = "32px";
+      section.appendChild(h("h2", "section-title", city + " (" + list.length + " Cinemas)"));
 
       list.forEach(t => {
-        const card = h("div", "card");
-        card.appendChild(h("h3", "", t.name));
-        card.appendChild(h("div", "place", t.location + "  •  " + t.capacity + " seats"));
+        const card = h("div", "bms-theater-card");
+        const top = h("div", "theater-card-top");
 
-        if (t.movies.length) {
+        const nameBox = h("div", "theater-name-box");
+        const fav = h("span", "theater-fav-icon", "♡");
+        fav.addEventListener("click", () => {
+          fav.classList.toggle("active");
+          fav.textContent = fav.classList.contains("active") ? "♥" : "♡";
+        });
+        nameBox.appendChild(fav);
+
+        const titleBox = h("div");
+        titleBox.appendChild(h("div", "theater-card-title", t.name));
+        titleBox.appendChild(h("div", "theater-card-loc", t.location + " • " + t.capacity + " seats • 4K Dolby Atmos"));
+        nameBox.appendChild(titleBox);
+        top.appendChild(nameBox);
+
+        const amenities = h("div", "theater-amenities");
+        amenities.innerHTML = "<span>📱 M-Ticket</span> • <span>🍿 F&B Available</span>";
+        top.appendChild(amenities);
+        card.appendChild(top);
+
+        const moviesBox = h("div");
+        moviesBox.style.marginTop = "14px";
+        moviesBox.style.paddingTop = "12px";
+        moviesBox.style.borderTop = "1px solid #f2f2f2";
+
+        if (t.movies && t.movies.length) {
+          moviesBox.appendChild(h("div", "", "Now Showing:"));
+          const row = h("div");
+          row.style.display = "flex";
+          row.style.gap = "8px";
+          row.style.flexWrap = "wrap";
+          row.style.marginTop = "8px";
+
           t.movies.forEach(m => {
-            const a = h("a", "pill", m.title);
-            a.href = "/movie/" + m.id;
-            card.appendChild(a);
+            const pill = h("a", "bms-signin-btn", "🎟️ " + m.title);
+            pill.href = "/movie/" + m.id;
+            pill.style.padding = "6px 14px";
+            pill.style.fontSize = "12.5px";
+            row.appendChild(pill);
           });
+          moviesBox.appendChild(row);
         } else {
-          card.appendChild(h("div", "muted", "No upcoming shows."));
+          moviesBox.appendChild(h("div", "muted", "No upcoming shows scheduled for today at this cinema."));
         }
+
+        card.appendChild(moviesBox);
         section.appendChild(card);
       });
       resultsBox.appendChild(section);
     });
   }
 
-  async function search() {
+  async function searchTheaters() {
     const params = new URLSearchParams({ q: qInput.value.trim(), location: locInput.value.trim() });
-    setCity(locInput.value.trim());
-    statusBox.textContent = "Searching...";
+    statusBox.textContent = "Searching theaters...";
     try {
-      const data = await api("/api/theater-search?" + params);
-      render(data.theaters);
+      const data = await api("/api/theaters?" + params);
+      renderTheaters(data.theaters);
       statusBox.textContent = data.theaters.length
-        ? data.theaters.length + " theater(s) found."
-        : "No theaters found. Try another name or location.";
+        ? "Showing " + data.theaters.length + " theater(s)."
+        : "";
     } catch (e) {
-      if (e.status === 401) { window.location.href = "/login?next=/theaters"; return; }
       statusBox.textContent = e.message;
     }
   }
 
-  document.getElementById("search-form").addEventListener("submit", e => { e.preventDefault(); search(); });
-  [qInput, locInput].forEach(el => el.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(search, 300); }));
-  document.getElementById("clear").addEventListener("click", () => { qInput.value = ""; locInput.value = ""; search(); });
+  document.getElementById("search-form").addEventListener("submit", e => { e.preventDefault(); searchTheaters(); });
+  [qInput, locInput].forEach(el => el.addEventListener("input", () => {
+    clearTimeout(timer);
+    timer = setTimeout(searchTheaters, 300);
+  }));
+  document.getElementById("clear").addEventListener("click", () => {
+    qInput.value = "";
+    locInput.value = "";
+    searchTheaters();
+  });
 
   loadCities();
-  search();
+  searchTheaters();
 </script>
 {% endblock %}

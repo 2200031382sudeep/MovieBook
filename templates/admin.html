@@ -1,92 +1,273 @@
 {% extends "base.html" %}
-{% block title %}Admin{% endblock %}
+{% block title %}Admin Portal - Cinema Manager - BookMyShow{% endblock %}
+
 {% block content %}
-<h1>Admin panel</h1>
+<div class="admin-container">
+  <!-- Admin Header -->
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;margin-bottom:24px;">
+    <div>
+      <h1 style="font-size:26px;font-weight:800;color:var(--bms-text-heading);">Admin Portal & Cinema Management</h1>
+      <p style="color:var(--bms-text-muted);font-size:13.5px;margin-top:2px;">Complete control over movies, cinema screens, showtime schedules, ticket pricing and bookings.</p>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <a href="/" class="bms-signin-btn" style="background:#4b5563;padding:8px 16px;font-size:13px;">View Website</a>
+      <button id="admin-logout-btn" class="bms-signin-btn" style="background:#ef4444;padding:8px 16px;font-size:13px;" type="button">Sign Out</button>
+    </div>
+  </div>
 
-<div class="tabs" id="tabs">
-  <button data-tab="movies" class="active">Movies</button>
-  <button data-tab="theaters">Theaters</button>
-  <button data-tab="showtimes">Showtimes</button>
-  <button data-tab="bookings">Bookings</button>
+  <!-- Admin Navigation Tabs -->
+  <div class="admin-tabs" id="tabs">
+    <button data-tab="dashboard" class="admin-tab-btn active">📊 Dashboard</button>
+    <button data-tab="movies" class="admin-tab-btn">🎬 Manage Movies</button>
+    <button data-tab="theaters" class="admin-tab-btn">🎭 Manage Theaters</button>
+    <button data-tab="showtimes" class="admin-tab-btn">🕒 Shows & Ticket Prices</button>
+    <button data-tab="bookings" class="admin-tab-btn">🎟️ View Bookings</button>
+  </div>
+
+  <!-- Global Flash Message Box -->
+  <div id="msg" class="msg"></div>
+
+  <!-- ======================================================================
+       1. ADMIN DASHBOARD OVERVIEW
+       ====================================================================== -->
+  <section id="tab-dashboard">
+    <!-- Metric Stat Cards -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:16px;margin-bottom:24px;">
+      <div class="admin-card" style="padding:18px;margin-bottom:0;border-left:4px solid var(--bms-red);">
+        <div style="font-size:12px;text-transform:uppercase;color:var(--bms-text-muted);font-weight:700;">Total Revenue</div>
+        <div style="font-size:28px;font-weight:800;color:var(--bms-text-heading);margin-top:6px;" id="stat-revenue">₹0</div>
+        <div style="font-size:11.5px;color:var(--bms-green);margin-top:4px;">From confirmed bookings</div>
+      </div>
+      <div class="admin-card" style="padding:18px;margin-bottom:0;border-left:4px solid #1a73e8;">
+        <div style="font-size:12px;text-transform:uppercase;color:var(--bms-text-muted);font-weight:700;">Total Bookings</div>
+        <div style="font-size:28px;font-weight:800;color:var(--bms-text-heading);margin-top:6px;" id="stat-bookings">0</div>
+        <div style="font-size:11.5px;color:var(--bms-text-muted);margin-top:4px;">Confirmed customer orders</div>
+      </div>
+      <div class="admin-card" style="padding:18px;margin-bottom:0;border-left:4px solid var(--bms-green);">
+        <div style="font-size:12px;text-transform:uppercase;color:var(--bms-text-muted);font-weight:700;">Active Movies</div>
+        <div style="font-size:28px;font-weight:800;color:var(--bms-text-heading);margin-top:6px;" id="stat-movies">0</div>
+        <div style="font-size:11.5px;color:var(--bms-text-muted);margin-top:4px;">Playing on website</div>
+      </div>
+      <div class="admin-card" style="padding:18px;margin-bottom:0;border-left:4px solid #f59e0b;">
+        <div style="font-size:12px;text-transform:uppercase;color:var(--bms-text-muted);font-weight:700;">Theaters / Screens</div>
+        <div style="font-size:28px;font-weight:800;color:var(--bms-text-heading);margin-top:6px;" id="stat-theaters">0</div>
+        <div style="font-size:11.5px;color:var(--bms-text-muted);margin-top:4px;">Cinema locations registered</div>
+      </div>
+      <div class="admin-card" style="padding:18px;margin-bottom:0;border-left:4px solid #8b5cf6;">
+        <div style="font-size:12px;text-transform:uppercase;color:var(--bms-text-muted);font-weight:700;">Upcoming Shows</div>
+        <div style="font-size:28px;font-weight:800;color:var(--bms-text-heading);margin-top:6px;" id="stat-shows">0</div>
+        <div style="font-size:11.5px;color:var(--bms-text-muted);margin-top:4px;">Scheduled showtimes</div>
+      </div>
+    </div>
+
+    <!-- Quick Shortcuts & Recent Activity -->
+    <div class="admin-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <h2>Recent Bookings</h2>
+        <button class="bms-signin-btn" style="padding:6px 14px;font-size:12px;" onclick="switchTab('bookings')">View All Bookings</button>
+      </div>
+      <div class="admin-table-wrap" id="dashboard-recent-table"></div>
+    </div>
+  </section>
+
+  <!-- ======================================================================
+       2. MANAGE MOVIES (Add, Edit, Delete)
+       ====================================================================== -->
+  <section id="tab-movies" class="hidden">
+    <div class="admin-card">
+      <h2>Add a New Movie</h2>
+      <form id="movie-form">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));gap:14px;margin-bottom:14px;">
+          <div><label style="display:block;font-size:12.5px;font-weight:600;margin-bottom:4px;">Movie Title *</label><input name="title" required maxlength="150" placeholder="e.g. Kalki 2898 AD" style="width:100%;padding:9px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);"></div>
+          <div><label style="display:block;font-size:12.5px;font-weight:600;margin-bottom:4px;">Genre(s)</label><input name="genre" placeholder="e.g. Action, Sci-Fi" maxlength="80" style="width:100%;padding:9px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);"></div>
+          <div><label style="display:block;font-size:12.5px;font-weight:600;margin-bottom:4px;">Language(s)</label><input name="language" placeholder="e.g. Telugu, Hindi, Tamil" maxlength="50" style="width:100%;padding:9px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);"></div>
+          <div><label style="display:block;font-size:12.5px;font-weight:600;margin-bottom:4px;">Duration (minutes)</label><input name="duration_min" type="number" min="1" max="600" value="135" style="width:100%;padding:9px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);"></div>
+          <div><label style="display:block;font-size:12.5px;font-weight:600;margin-bottom:4px;">Rating (0.0 to 10.0)</label><input name="rating" type="number" min="0" max="10" step="0.1" value="8.5" style="width:100%;padding:9px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);"></div>
+          <div><label style="display:block;font-size:12.5px;font-weight:600;margin-bottom:4px;">Poster URL (Image link)</label><input name="poster_url" placeholder="https://..." style="width:100%;padding:9px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);"></div>
+        </div>
+        <label style="display:block;font-size:12.5px;font-weight:600;margin-bottom:4px;">Synopsis / Description</label>
+        <textarea name="description" placeholder="Short description of the movie storyline..." style="width:100%;min-height:75px;padding:9px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);margin-bottom:14px;font-family:inherit;"></textarea>
+        <button class="bms-signin-btn" type="submit" style="padding:10px 24px;">+ Add Movie</button>
+      </form>
+    </div>
+    <div class="admin-card">
+      <h2>Existing Movies</h2>
+      <div class="admin-table-wrap" id="movies-table"></div>
+    </div>
+  </section>
+
+  <!-- ======================================================================
+       3. MANAGE THEATERS (Add, Edit, Delete)
+       ====================================================================== -->
+  <section id="tab-theaters" class="hidden">
+    <div class="admin-card">
+      <h2>Add a Theater / Cinema Hall</h2>
+      <form id="theater-form">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));gap:14px;margin-bottom:14px;">
+          <div><label style="display:block;font-size:12.5px;font-weight:600;margin-bottom:4px;">Theater Name *</label><input name="name" placeholder="e.g. PVR: Forum Sujana Mall" required maxlength="120" style="width:100%;padding:9px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);"></div>
+          <div><label style="display:block;font-size:12.5px;font-weight:600;margin-bottom:4px;">City *</label><input name="city" required maxlength="80" list="admin-cities" placeholder="e.g. Hyderabad" style="width:100%;padding:9px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);"></div>
+          <div><label style="display:block;font-size:12.5px;font-weight:600;margin-bottom:4px;">Area / Address *</label><input name="location" required maxlength="200" placeholder="e.g. Kukatpally" style="width:100%;padding:9px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);"></div>
+          <div><label style="display:block;font-size:12.5px;font-weight:600;margin-bottom:4px;">Rows (A to Z)</label><input name="rows" type="number" min="1" max="26" value="8" style="width:100%;padding:9px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);"></div>
+          <div><label style="display:block;font-size:12.5px;font-weight:600;margin-bottom:4px;">Seats per Row</label><input name="seats_per_row" type="number" min="1" max="30" value="10" style="width:100%;padding:9px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);"></div>
+        </div>
+        <datalist id="admin-cities"></datalist>
+        <button class="bms-signin-btn" type="submit" style="padding:10px 24px;">+ Add Theater</button>
+      </form>
+    </div>
+    <div class="admin-card">
+      <h2>Registered Theaters</h2>
+      <div class="admin-table-wrap" id="theaters-table"></div>
+    </div>
+  </section>
+
+  <!-- ======================================================================
+       4 & 5. MANAGE SHOWTIMES & TICKET PRICES (Add, Edit, Delete)
+       ====================================================================== -->
+  <section id="tab-showtimes" class="hidden">
+    <div class="admin-card">
+      <h2>Schedule a Showtime & Set Ticket Price</h2>
+      <form id="showtime-form">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(210px, 1fr));gap:14px;margin-bottom:14px;">
+          <div><label style="display:block;font-size:12.5px;font-weight:600;margin-bottom:4px;">Select Movie *</label><select name="movie_id" id="st-movie" required style="width:100%;padding:9px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);"></select></div>
+          <div><label style="display:block;font-size:12.5px;font-weight:600;margin-bottom:4px;">Select Theater *</label><select name="theater_id" id="st-theater" required style="width:100%;padding:9px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);"></select></div>
+          <div><label style="display:block;font-size:12.5px;font-weight:600;margin-bottom:4px;">Date & Start Time *</label><input name="start_time" id="st-start-time" type="datetime-local" required style="width:100%;padding:9px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);"></div>
+          <div><label style="display:block;font-size:12.5px;font-weight:600;margin-bottom:4px;">Ticket Price (INR ₹) *</label><input name="price" id="st-price" type="number" min="1" max="10000" step="0.01" value="250.00" required style="width:100%;padding:9px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);"></div>
+        </div>
+        <button class="bms-signin-btn" type="submit" style="padding:10px 24px;">+ Schedule Showtime</button>
+      </form>
+    </div>
+    <div class="admin-card">
+      <h2>Scheduled Showtimes & Pricing</h2>
+      <div class="admin-table-wrap" id="showtimes-table"></div>
+    </div>
+  </section>
+
+  <!-- ======================================================================
+       6. VIEW & MANAGE ALL BOOKINGS
+       ====================================================================== -->
+  <section id="tab-bookings" class="hidden">
+    <div class="admin-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+        <h2>All Customer Bookings</h2>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <input type="search" id="booking-search" placeholder="Search reference, customer or movie..." style="padding:8px 12px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);font-size:13px;width:240px;">
+          <select id="booking-status-filter" style="padding:8px 12px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);font-size:13px;">
+            <option value="">All Statuses</option>
+            <option value="Confirmed">Confirmed</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
+        </div>
+      </div>
+      <div class="admin-table-wrap" id="bookings-table"></div>
+    </div>
+  </section>
 </div>
-<div id="msg" class="msg"></div>
 
-<!-- ============ Movies ============ -->
-<section id="tab-movies">
-  <div class="panel">
-    <h2>Add a movie</h2>
-    <form id="movie-form">
-      <div class="form-grid">
-        <div><label>Title *</label><input name="title" required maxlength="150"></div>
-        <div><label>Genre</label><input name="genre" maxlength="80"></div>
-        <div><label>Language</label><input name="language" maxlength="50"></div>
-        <div><label>Duration (min)</label><input name="duration_min" type="number" min="1" max="600" value="120"></div>
-        <div><label>Rating (0-10)</label><input name="rating" type="number" min="0" max="10" step="0.1" value="0"></div>
-        <div><label>Poster URL</label><input name="poster_url" placeholder="https://..."></div>
+<!-- ==========================================================================
+     MODALS FOR EDITING (Movie, Theater, Showtime)
+     ========================================================================== -->
+<!-- Edit Movie Modal -->
+<div id="edit-movie-modal" class="bms-city-modal-backdrop" aria-hidden="true">
+  <div class="bms-city-modal" style="width:600px;padding:24px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <h3 style="font-size:18px;font-weight:700;">Edit Movie</h3>
+      <button class="city-modal-close" onclick="closeEditModal('edit-movie-modal')">✕</button>
+    </div>
+    <form id="edit-movie-form">
+      <input type="hidden" name="id">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));gap:12px;margin-bottom:12px;">
+        <div><label style="font-size:12px;font-weight:600;">Title</label><input name="title" required style="width:100%;padding:8px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);"></div>
+        <div><label style="font-size:12px;font-weight:600;">Genre</label><input name="genre" style="width:100%;padding:8px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);"></div>
+        <div><label style="font-size:12px;font-weight:600;">Language</label><input name="language" style="width:100%;padding:8px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);"></div>
+        <div><label style="font-size:12px;font-weight:600;">Duration (min)</label><input name="duration_min" type="number" style="width:100%;padding:8px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);"></div>
+        <div><label style="font-size:12px;font-weight:600;">Rating (0-10)</label><input name="rating" type="number" step="0.1" style="width:100%;padding:8px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);"></div>
+        <div><label style="font-size:12px;font-weight:600;">Poster URL</label><input name="poster_url" style="width:100%;padding:8px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);"></div>
       </div>
-      <label>Description</label><textarea name="description"></textarea>
-      <p><button class="btn" type="submit">Add movie</button></p>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:12px;font-weight:600;">Description</label>
+        <textarea name="description" style="width:100%;min-height:70px;padding:8px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);font-family:inherit;"></textarea>
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;">
+          <input type="checkbox" name="is_active" value="1"> Active (Visible on website)
+        </label>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button type="button" class="bms-signin-btn" style="background:#6b7280;" onclick="closeEditModal('edit-movie-modal')">Cancel</button>
+        <button type="submit" class="bms-signin-btn">Save Changes</button>
+      </div>
     </form>
   </div>
-  <div class="panel table-wrap" id="movies-table"></div>
-</section>
+</div>
 
-<!-- ============ Theaters ============ -->
-<section id="tab-theaters" class="hidden">
-  <div class="panel">
-    <h2>Add a theater</h2>
-    <form id="theater-form">
-      <div class="form-grid">
-        <div><label>Name *</label><input name="name" required maxlength="120"></div>
-        <div><label>City *</label><input name="city" required maxlength="80" list="admin-cities" placeholder="e.g. Bengaluru"></div>
-        <div><label>Area / address *</label><input name="location" required maxlength="200" placeholder="e.g. MG Road"></div>
-        <div><label>Rows (A, B, C...)</label><input name="rows" type="number" min="1" max="26" value="8"></div>
-        <div><label>Seats per row</label><input name="seats_per_row" type="number" min="1" max="30" value="10"></div>
+<!-- Edit Theater Modal -->
+<div id="edit-theater-modal" class="bms-city-modal-backdrop" aria-hidden="true">
+  <div class="bms-city-modal" style="width:540px;padding:24px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <h3 style="font-size:18px;font-weight:700;">Edit Theater</h3>
+      <button class="city-modal-close" onclick="closeEditModal('edit-theater-modal')">✕</button>
+    </div>
+    <form id="edit-theater-form">
+      <input type="hidden" name="id">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+        <div style="grid-column:1 / -1;"><label style="font-size:12px;font-weight:600;">Theater Name</label><input name="name" required style="width:100%;padding:8px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);"></div>
+        <div><label style="font-size:12px;font-weight:600;">City</label><input name="city" required style="width:100%;padding:8px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);"></div>
+        <div><label style="font-size:12px;font-weight:600;">Area / Address</label><input name="location" required style="width:100%;padding:8px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);"></div>
+        <div><label style="font-size:12px;font-weight:600;">Rows (A to Z)</label><input name="rows" type="number" min="1" max="26" required style="width:100%;padding:8px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);"></div>
+        <div><label style="font-size:12px;font-weight:600;">Seats per row</label><input name="seats_per_row" type="number" min="1" max="30" required style="width:100%;padding:8px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);"></div>
       </div>
-      <datalist id="admin-cities"></datalist>
-      <button class="btn" type="submit">Add theater</button>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button type="button" class="bms-signin-btn" style="background:#6b7280;" onclick="closeEditModal('edit-theater-modal')">Cancel</button>
+        <button type="submit" class="bms-signin-btn">Save Changes</button>
+      </div>
     </form>
   </div>
-  <div class="panel table-wrap" id="theaters-table"></div>
-</section>
+</div>
 
-<!-- ============ Showtimes ============ -->
-<section id="tab-showtimes" class="hidden">
-  <div class="panel">
-    <h2>Add a showtime</h2>
-    <form id="showtime-form">
-      <div class="form-grid">
-        <div><label>Movie *</label><select name="movie_id" id="st-movie" required></select></div>
-        <div><label>Theater *</label><select name="theater_id" id="st-theater" required></select></div>
-        <div><label>Date and time *</label><input name="start_time" type="datetime-local" required></div>
-        <div><label>Ticket price (INR) *</label><input name="price" type="number" min="1" max="10000" step="0.01" value="250" required></div>
+<!-- Edit Showtime Modal -->
+<div id="edit-showtime-modal" class="bms-city-modal-backdrop" aria-hidden="true">
+  <div class="bms-city-modal" style="width:540px;padding:24px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <h3 style="font-size:18px;font-weight:700;">Edit Showtime & Ticket Price</h3>
+      <button class="city-modal-close" onclick="closeEditModal('edit-showtime-modal')">✕</button>
+    </div>
+    <form id="edit-showtime-form">
+      <input type="hidden" name="id">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+        <div style="grid-column:1 / -1;"><label style="font-size:12px;font-weight:600;">Movie</label><select name="movie_id" id="edit-st-movie" required style="width:100%;padding:8px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);"></select></div>
+        <div style="grid-column:1 / -1;"><label style="font-size:12px;font-weight:600;">Theater</label><select name="theater_id" id="edit-st-theater" required style="width:100%;padding:8px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);"></select></div>
+        <div><label style="font-size:12px;font-weight:600;">Date & Start Time</label><input name="start_time" type="datetime-local" required style="width:100%;padding:8px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);"></div>
+        <div><label style="font-size:12px;font-weight:600;">Ticket Price (₹)</label><input name="price" type="number" step="0.01" min="1" required style="width:100%;padding:8px;border:1px solid var(--bms-border);border-radius:var(--bms-radius);"></div>
       </div>
-      <button class="btn" type="submit">Add showtime</button>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button type="button" class="bms-signin-btn" style="background:#6b7280;" onclick="closeEditModal('edit-showtime-modal')">Cancel</button>
+        <button type="submit" class="bms-signin-btn">Save Changes</button>
+      </div>
     </form>
   </div>
-  <div class="panel table-wrap" id="showtimes-table"></div>
-</section>
-
-<!-- ============ Bookings ============ -->
-<section id="tab-bookings" class="hidden">
-  <div class="panel table-wrap" id="bookings-table"></div>
-</section>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
   const msgBox = document.getElementById("msg");
+  let cachedMovies = [];
+  let cachedTheaters = [];
+  let cachedShowtimes = [];
+
   function flash(text, ok) {
     msgBox.textContent = text;
     msgBox.className = "msg show " + (ok ? "ok" : "error");
     setTimeout(() => msgBox.classList.remove("show"), 4000);
   }
 
-  // Build a table. rows = array of arrays; each cell is text or a DOM node.
   function renderTable(el, headers, rows, emptyText) {
     el.innerHTML = "";
-    if (!rows.length) { el.appendChild(h("p", "muted", emptyText)); return; }
-    const table = h("table");
+    if (!rows.length) {
+      el.innerHTML = `<p style="color:var(--bms-text-muted);padding:18px;text-align:center;">${emptyText}</p>`;
+      return;
+    }
+    const table = h("table", "bms-table");
     const head = h("tr");
     headers.forEach(t => head.appendChild(h("th", "", t)));
     table.appendChild(head);
@@ -102,27 +283,26 @@
     el.appendChild(table);
   }
 
-  function deleteButton(url, onDone) {
-    const btn = h("button", "btn danger small", "Delete");
+  function actionButton(text, bg, onClick) {
+    const btn = h("button", "bms-signin-btn", text);
     btn.type = "button";
-    btn.addEventListener("click", async () => {
-      if (!confirm("Delete this item?")) return;
-      try { await api(url, "DELETE"); flash("Deleted.", true); onDone(); }
-      catch (e) { flash(e.message, false); }
-    });
+    btn.style.background = bg;
+    btn.style.padding = "4px 10px";
+    btn.style.fontSize = "11.5px";
+    btn.style.marginRight = "6px";
+    btn.addEventListener("click", onClick);
     return btn;
   }
 
-  // ---- tabs ----
-  document.getElementById("tabs").addEventListener("click", e => {
-    const tab = e.target.dataset.tab;
-    if (!tab) return;
-    document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b === e.target));
-    ["movies", "theaters", "showtimes", "bookings"].forEach(t =>
-      document.getElementById("tab-" + t).classList.toggle("hidden", t !== tab));
-    if (tab === "showtimes") { loadShowtimeChoices(); loadShowtimes(); }
-    if (tab === "bookings") loadBookings();
-  });
+  function closeEditModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) modal.classList.remove("open");
+  }
+
+  function openEditModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) modal.classList.add("open");
+  }
 
   function formData(form) {
     const data = {};
@@ -130,86 +310,344 @@
     return data;
   }
 
-  // ---- movies ----
-  async function loadMovies() {
-    const data = await api("/api/admin/movies");
-    renderTable(document.getElementById("movies-table"),
-      ["Title", "Genre", "Language", "Rating", "Active", ""],
-      data.movies.map(m => {
-        const box = document.createElement("input");
-        box.type = "checkbox";
-        box.checked = m.is_active;
-        box.addEventListener("change", async () => {
-          try { await api("/api/admin/movies/" + m.id, "PATCH", { is_active: box.checked }); }
-          catch (e) { box.checked = !box.checked; flash(e.message, false); }
-        });
-        return [m.title, m.genre, m.language, m.rating, box, deleteButton("/api/admin/movies/" + m.id, loadMovies)];
-      }), "No movies yet.");
+  // ========================================================================
+  // 1. DASHBOARD
+  // ========================================================================
+  async function loadDashboard() {
+    try {
+      const stats = await api("/api/admin/stats");
+      document.getElementById("stat-revenue").textContent = money(stats.revenue);
+      document.getElementById("stat-bookings").textContent = stats.total_bookings;
+      document.getElementById("stat-movies").textContent = stats.active_movies + " / " + stats.total_movies;
+      document.getElementById("stat-theaters").textContent = stats.total_theaters;
+      document.getElementById("stat-shows").textContent = stats.upcoming_showtimes;
+
+      renderTable(
+        document.getElementById("dashboard-recent-table"),
+        ["Ref ID", "Customer", "Movie", "Theater", "Show Time", "Seats", "Total", "Status"],
+        stats.recent_bookings.map(b => [
+          b.reference,
+          b.user_name + " (" + b.user_email + ")",
+          b.movie.title,
+          b.theater.name,
+          fmtDateTime(b.showtime.start_time),
+          b.seats.join(", "),
+          money(b.total),
+          h("span", "status-" + b.status, b.status),
+        ]),
+        "No customer bookings recorded yet."
+      );
+    } catch (e) {
+      flash(e.message, false);
+    }
   }
+
+  // ========================================================================
+  // 2. MOVIES MANAGEMENT (Add, Edit, Delete)
+  // ========================================================================
+  async function loadMovies() {
+    try {
+      const data = await api("/api/admin/movies");
+      cachedMovies = data.movies;
+      renderTable(
+        document.getElementById("movies-table"),
+        ["Title", "Genre", "Language", "Duration", "Rating", "Active", "Actions"],
+        data.movies.map(m => {
+          const activeToggle = document.createElement("input");
+          activeToggle.type = "checkbox";
+          activeToggle.checked = m.is_active;
+          activeToggle.addEventListener("change", async () => {
+            try {
+              await api("/api/admin/movies/" + m.id, "PATCH", { is_active: activeToggle.checked });
+              flash("Updated movie status.", true);
+            } catch (err) {
+              activeToggle.checked = !activeToggle.checked;
+              flash(err.message, false);
+            }
+          });
+
+          const actions = h("div");
+          actions.appendChild(actionButton("Edit", "#1a73e8", () => editMoviePrompt(m)));
+          actions.appendChild(actionButton("Delete", "#ef4444", async () => {
+            if (!confirm(`Delete movie "${m.title}"?`)) return;
+            try {
+              await api("/api/admin/movies/" + m.id, "DELETE");
+              flash("Movie deleted successfully.", true);
+              loadMovies();
+            } catch (e) { flash(e.message, false); }
+          }));
+
+          return [m.title, m.genre, m.language, m.duration_min + " mins", "★ " + Number(m.rating).toFixed(1), activeToggle, actions];
+        }),
+        "No movies added yet."
+      );
+    } catch (e) { flash(e.message, false); }
+  }
+
+  function editMoviePrompt(m) {
+    const f = document.getElementById("edit-movie-form");
+    f.id.value = m.id;
+    f.title.value = m.title;
+    f.genre.value = m.genre || "";
+    f.language.value = m.language || "";
+    f.duration_min.value = m.duration_min;
+    f.rating.value = m.rating;
+    f.poster_url.value = m.poster_url || "";
+    f.description.value = m.description || "";
+    f.is_active.checked = m.is_active;
+    openEditModal("edit-movie-modal");
+  }
+
   document.getElementById("movie-form").addEventListener("submit", async e => {
     e.preventDefault();
     try {
       await api("/api/admin/movies", "POST", formData(e.target));
-      e.target.reset(); flash("Movie added.", true); loadMovies();
+      e.target.reset();
+      flash("Movie added successfully.", true);
+      loadMovies();
     } catch (err) { flash(err.message, false); }
   });
 
-  // ---- theaters ----
+  document.getElementById("edit-movie-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    const id = e.target.id.value;
+    const data = formData(e.target);
+    data.is_active = e.target.is_active.checked;
+    try {
+      await api("/api/admin/movies/" + id, "PUT", data);
+      closeEditModal("edit-movie-modal");
+      flash("Movie updated successfully.", true);
+      loadMovies();
+    } catch (err) { flash(err.message, false); }
+  });
+
+  // ========================================================================
+  // 3. THEATERS MANAGEMENT (Add, Edit, Delete)
+  // ========================================================================
   async function loadTheaters() {
-    const data = await api("/api/admin/theaters");
-    const cities = document.getElementById("admin-cities");
-    cities.innerHTML = "";
-    [...new Set(data.theaters.map(t => t.city))].forEach(c => cities.appendChild(new Option(c, c)));
-    renderTable(document.getElementById("theaters-table"),
-      ["Name", "City", "Area", "Seats", ""],
-      data.theaters.map(t => [t.name, t.city, t.location,
-        t.rows + " x " + t.seats_per_row + " = " + t.capacity,
-        deleteButton("/api/admin/theaters/" + t.id, loadTheaters)]), "No theaters yet.");
+    try {
+      const data = await api("/api/admin/theaters");
+      cachedTheaters = data.theaters;
+      const datalist = document.getElementById("admin-cities");
+      datalist.innerHTML = "";
+      [...new Set(data.theaters.map(t => t.city))].forEach(c => datalist.appendChild(new Option(c, c)));
+
+      renderTable(
+        document.getElementById("theaters-table"),
+        ["Name", "City", "Area / Address", "Layout (Rows x Seats)", "Capacity", "Actions"],
+        data.theaters.map(t => {
+          const actions = h("div");
+          actions.appendChild(actionButton("Edit", "#1a73e8", () => editTheaterPrompt(t)));
+          actions.appendChild(actionButton("Delete", "#ef4444", async () => {
+            if (!confirm(`Delete theater "${t.name}"?`)) return;
+            try {
+              await api("/api/admin/theaters/" + t.id, "DELETE");
+              flash("Theater deleted successfully.", true);
+              loadTheaters();
+            } catch (e) { flash(e.message, false); }
+          }));
+
+          return [t.name, t.city, t.location, `${t.rows} Rows × ${t.seats_per_row} Seats`, t.capacity + " seats", actions];
+        }),
+        "No theaters added yet."
+      );
+    } catch (e) { flash(e.message, false); }
   }
+
+  function editTheaterPrompt(t) {
+    const f = document.getElementById("edit-theater-form");
+    f.id.value = t.id;
+    f.name.value = t.name;
+    f.city.value = t.city;
+    f.location.value = t.location;
+    f.rows.value = t.rows;
+    f.seats_per_row.value = t.seats_per_row;
+    openEditModal("edit-theater-modal");
+  }
+
   document.getElementById("theater-form").addEventListener("submit", async e => {
     e.preventDefault();
     try {
       await api("/api/admin/theaters", "POST", formData(e.target));
-      e.target.reset(); flash("Theater added.", true); loadTheaters();
+      e.target.reset();
+      flash("Theater added successfully.", true);
+      loadTheaters();
     } catch (err) { flash(err.message, false); }
   });
 
-  // ---- showtimes ----
+  document.getElementById("edit-theater-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    const id = e.target.id.value;
+    try {
+      await api("/api/admin/theaters/" + id, "PUT", formData(e.target));
+      closeEditModal("edit-theater-modal");
+      flash("Theater updated successfully.", true);
+      loadTheaters();
+    } catch (err) { flash(err.message, false); }
+  });
+
+  // ========================================================================
+  // 4 & 5. SHOWTIMES & TICKET PRICES (Add, Edit, Delete)
+  // ========================================================================
   async function loadShowtimeChoices() {
     const [m, t] = await Promise.all([api("/api/admin/movies"), api("/api/admin/theaters")]);
-    const movieSel = document.getElementById("st-movie");
-    const theaterSel = document.getElementById("st-theater");
-    movieSel.innerHTML = ""; theaterSel.innerHTML = "";
-    m.movies.filter(x => x.is_active).forEach(x => movieSel.appendChild(new Option(x.title, x.id)));
-    t.theaters.forEach(x => theaterSel.appendChild(new Option(x.name + " — " + x.city, x.id)));
+    const mSel = document.getElementById("st-movie");
+    const tSel = document.getElementById("st-theater");
+    const emSel = document.getElementById("edit-st-movie");
+    const etSel = document.getElementById("edit-st-theater");
+
+    mSel.innerHTML = ""; tSel.innerHTML = "";
+    emSel.innerHTML = ""; etSel.innerHTML = "";
+
+    m.movies.filter(x => x.is_active).forEach(x => {
+      mSel.appendChild(new Option(x.title, x.id));
+      emSel.appendChild(new Option(x.title, x.id));
+    });
+
+    t.theaters.forEach(x => {
+      tSel.appendChild(new Option(`${x.name} (${x.city})`, x.id));
+      etSel.appendChild(new Option(`${x.name} (${x.city})`, x.id));
+    });
   }
+
   async function loadShowtimes() {
-    const data = await api("/api/admin/showtimes");
-    renderTable(document.getElementById("showtimes-table"),
-      ["Movie", "Theater", "City", "Starts", "Price", ""],
-      data.showtimes.map(s => [s.movie_title, s.theater_name, s.theater_city,
-        fmtDateTime(s.start_time), money(s.price),
-        deleteButton("/api/admin/showtimes/" + s.id, loadShowtimes)]), "No showtimes yet.");
+    try {
+      const data = await api("/api/admin/showtimes");
+      cachedShowtimes = data.showtimes;
+      renderTable(
+        document.getElementById("showtimes-table"),
+        ["Movie", "Theater & City", "Show Date & Time", "Ticket Price", "Actions"],
+        data.showtimes.map(s => {
+          const actions = h("div");
+          actions.appendChild(actionButton("Edit / Price", "#1a73e8", () => editShowtimePrompt(s)));
+          actions.appendChild(actionButton("Delete", "#ef4444", async () => {
+            if (!confirm(`Delete showtime for "${s.movie_title}"?`)) return;
+            try {
+              await api("/api/admin/showtimes/" + s.id, "DELETE");
+              flash("Showtime deleted successfully.", true);
+              loadShowtimes();
+            } catch (e) { flash(e.message, false); }
+          }));
+
+          return [s.movie_title, `${s.theater_name} (${s.theater_city})`, fmtDateTime(s.start_time), money(s.price), actions];
+        }),
+        "No showtimes scheduled yet."
+      );
+    } catch (e) { flash(e.message, false); }
   }
+
+  function editShowtimePrompt(s) {
+    const f = document.getElementById("edit-showtime-form");
+    f.id.value = s.id;
+    f.movie_id.value = s.movie_id;
+    f.theater_id.value = s.theater_id;
+    f.start_time.value = s.start_time;
+    f.price.value = Number(s.price).toFixed(2);
+    openEditModal("edit-showtime-modal");
+  }
+
   document.getElementById("showtime-form").addEventListener("submit", async e => {
     e.preventDefault();
     try {
       await api("/api/admin/showtimes", "POST", formData(e.target));
-      flash("Showtime added.", true); loadShowtimes();
+      flash("Showtime scheduled successfully.", true);
+      loadShowtimes();
     } catch (err) { flash(err.message, false); }
   });
 
-  // ---- bookings ----
+  document.getElementById("edit-showtime-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    const id = e.target.id.value;
+    try {
+      await api("/api/admin/showtimes/" + id, "PUT", formData(e.target));
+      closeEditModal("edit-showtime-modal");
+      flash("Showtime and ticket price updated successfully.", true);
+      loadShowtimes();
+    } catch (err) { flash(err.message, false); }
+  });
+
+  // ========================================================================
+  // 6. VIEW BOOKINGS (Filter, Search, Cancel)
+  // ========================================================================
   async function loadBookings() {
-    const data = await api("/api/admin/bookings");
-    renderTable(document.getElementById("bookings-table"),
-      ["Ref", "Customer", "Movie", "Theater", "Show", "Seats", "Total", "Status"],
-      data.bookings.map(b => [b.reference, b.user_name + " (" + b.user_email + ")", b.movie.title,
-        b.theater.name, fmtDateTime(b.showtime.start_time), b.seats.join(", "), money(b.total), b.status]),
-      "No bookings yet.");
+    const q = document.getElementById("booking-search").value.trim();
+    const status = document.getElementById("booking-status-filter").value;
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (status) params.set("status", status);
+
+    try {
+      const data = await api("/api/admin/bookings?" + params);
+      renderTable(
+        document.getElementById("bookings-table"),
+        ["Booking Ref", "Customer Name & Email", "Movie", "Theater", "Show Time", "Seats", "Total Paid", "Status", "Action"],
+        data.bookings.map(b => {
+          const actionWrap = h("div");
+          if (b.status === "Confirmed") {
+            actionWrap.appendChild(actionButton("Cancel Booking", "#ef4444", async () => {
+              if (!confirm(`Cancel booking ${b.reference} for ${b.user_name}? Seats will be released.`)) return;
+              try {
+                await api("/api/admin/bookings/" + b.id + "/cancel", "POST");
+                flash("Booking cancelled and seats released.", true);
+                loadBookings();
+              } catch (err) { flash(err.message, false); }
+            }));
+          } else {
+            actionWrap.appendChild(document.createTextNode("—"));
+          }
+
+          return [
+            b.reference,
+            `${b.user_name} (${b.user_email})`,
+            b.movie.title,
+            b.theater.name,
+            fmtDateTime(b.showtime.start_time),
+            b.seats.join(", "),
+            money(b.total),
+            h("span", "status-" + b.status, b.status),
+            actionWrap,
+          ];
+        }),
+        "No customer bookings found."
+      );
+    } catch (e) { flash(e.message, false); }
   }
 
-  loadMovies().catch(e => flash(e.message, false));
-  loadTheaters().catch(e => flash(e.message, false));
+  document.getElementById("booking-search").addEventListener("input", () => {
+    clearTimeout(window.bSearchTimer);
+    window.bSearchTimer = setTimeout(loadBookings, 300);
+  });
+  document.getElementById("booking-status-filter").addEventListener("change", loadBookings);
+
+  // ========================================================================
+  // Tab Switching Logic
+  // ========================================================================
+  function switchTab(tab) {
+    document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+    ["dashboard", "movies", "theaters", "showtimes", "bookings"].forEach(t => {
+      const el = document.getElementById("tab-" + t);
+      if (el) el.classList.toggle("hidden", t !== tab);
+    });
+
+    if (tab === "dashboard") loadDashboard();
+    if (tab === "movies") loadMovies();
+    if (tab === "theaters") loadTheaters();
+    if (tab === "showtimes") { loadShowtimeChoices(); loadShowtimes(); }
+    if (tab === "bookings") loadBookings();
+  }
+
+  document.getElementById("tabs").addEventListener("click", e => {
+    const tab = e.target.dataset.tab;
+    if (tab) switchTab(tab);
+  });
+
+  // Admin Logout Button
+  document.getElementById("admin-logout-btn").addEventListener("click", async () => {
+    try { await api("/api/auth/logout", "POST"); } catch (e) {}
+    window.location.href = "/";
+  });
+
+  // Initial Load
+  loadDashboard();
 </script>
 {% endblock %}

@@ -1,15 +1,40 @@
 {% extends "base.html" %}
-{% block title %}Login{% endblock %}
+{% block title %}Sign In - BookMyShow{% endblock %}
+
 {% block content %}
-<div class="panel auth-box">
-  <h1>Login</h1>
-  <form id="form">
-    <div class="field"><label for="email">Email</label><input id="email" type="email" required autocomplete="email"></div>
-    <div class="field"><label for="password">Password</label><input id="password" type="password" required autocomplete="current-password"></div>
-    <div id="msg" class="msg error"></div>
-    <button class="btn" type="submit">Login</button>
-  </form>
-  <p class="muted">New here? <a href="/register">Create an account</a></p>
+<div class="bms-container">
+  <div class="bms-auth-container">
+    <div class="auth-header-strip">
+      <h2>Get Started</h2>
+      <p>Sign in to your BookMyShow account</p>
+    </div>
+
+    <div class="auth-body">
+      <form id="form">
+        <div class="bms-input-group">
+          <label for="email">Email address</label>
+          <input id="email" type="email" placeholder="Enter your email" required autocomplete="email">
+        </div>
+
+        <div class="bms-input-group">
+          <label for="password">Password</label>
+          <input id="password" type="password" placeholder="Enter your password" required autocomplete="current-password">
+        </div>
+
+        <div id="msg" class="msg error"></div>
+
+        <button class="bms-primary-btn" type="submit" style="margin-top:8px;">Sign in</button>
+      </form>
+
+      <div class="auth-divider">
+        <span>OR</span>
+      </div>
+
+      <p style="text-align:center;font-size:13.5px;color:var(--bms-text-muted);">
+        Don't have an account? <a href="/register" style="color:var(--bms-red);font-weight:700;">Create Account</a>
+      </p>
+    </div>
+  </div>
 </div>
 {% endblock %}
 
@@ -24,7 +49,7 @@
         email: document.getElementById("email").value,
         password: document.getElementById("password").value,
       });
-      window.location.href = safeNext("/theaters");   // after login: the theater search page
+      window.location.href = safeNext("/");
     } catch (err) {
       msg.textContent = err.message;
       msg.classList.add("show");
