@@ -21,6 +21,18 @@ def api_login_required(view):
     return wrapped
 
 
+def api_admin_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        user = current_user()
+        if not user:
+            return jsonify(error="Please log in first."), 401
+        if not user.is_admin:
+            return jsonify(error="Admins only."), 403
+        return view(*args, **kwargs)
+    return wrapped
+
+
 def page_login_required(view):
     @wraps(view)
     def wrapped(*args, **kwargs):

@@ -14,8 +14,11 @@ MOVIES = [
     ("Dragon Realm", "Fantasy, Adventure", "English", 150, 8.6, "A young explorer discovers a hidden world ruled by dragons."),
 ]
 THEATERS = [
-    ("Star Cinemas", "MG Road, Bengaluru", 8, 10),
-    ("Galaxy Multiplex", "Indiranagar, Bengaluru", 6, 12),
+    # (name, city, area, rows, seats_per_row)
+    ("Star Cinemas", "Bengaluru", "MG Road", 8, 10),
+    ("Galaxy Multiplex", "Bengaluru", "Indiranagar", 6, 12),
+    ("City Screens", "Hyderabad", "Banjara Hills", 8, 10),
+    ("Royal Talkies", "Mumbai", "Andheri West", 7, 12),
 ]
 TIMES = [(12, 0), (15, 30), (19, 0), (22, 0)]
 
@@ -25,7 +28,7 @@ with app.app_context():
 
     movies = [Movie(title=t, genre=g, language=l, duration_min=d, rating=r, description=desc, is_active=True)
               for t, g, l, d, r, desc in MOVIES]
-    theaters = [Theater(name=n, location=loc, rows=r, seats_per_row=s) for n, loc, r, s in THEATERS]
+    theaters = [Theater(name=n, city=c, location=loc, rows=r, seats_per_row=s) for n, c, loc, r, s in THEATERS]
     db.session.add_all(movies + theaters)
     db.session.flush()
 
@@ -33,12 +36,12 @@ with app.app_context():
     count = 0
     for day in range(0, 4):
         for i, movie in enumerate(movies):
-            theater = theaters[i % len(theaters)]
-            hour, minute = TIMES[(i + day) % len(TIMES)]
-            start = (now + timedelta(days=day)).replace(hour=hour, minute=minute, second=0, microsecond=0)
-            if start > now:
-                db.session.add(Showtime(movie_id=movie.id, theater_id=theater.id, start_time=start,
-                                        price=Decimal("250") if hour < 19 else Decimal("320")))
-                count += 1
+            for j, theater in enumerate(theaters):   # every movie plays in every city
+                hour, minute = TIMES[(i + day + j) % len(TIMES)]
+                start = (now + timedelta(days=day)).replace(hour=hour, minute=minute, second=0, microsecond=0)
+                if start > now:
+                    db.session.add(Showtime(movie_id=movie.id, theater_id=theater.id, start_time=start,
+                                            price=Decimal("250") if hour < 19 else Decimal("320")))
+                    count += 1
     db.session.commit()
     print(f"Added {len(movies)} movies, {len(theaters)} theaters and {count} showtimes.")

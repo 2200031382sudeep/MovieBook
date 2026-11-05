@@ -1,34 +1,215 @@
 {% extends "base.html" %}
-{% block title %}Admin portal – MovieBook{% endblock %}
+{% block title %}Admin{% endblock %}
 {% block content %}
-<section class="container section">
-  <h1 class="admin-title">Admin portal</h1>
-  <div class="stats" id="stats"></div>
+<h1>Admin panel</h1>
 
-  <div class="tabs" id="tabs">
-    <button type="button" data-tab="movies" class="active">Movies</button>
-    <button type="button" data-tab="theaters">Theaters</button>
-    <button type="button" data-tab="showtimes">Showtimes &amp; prices</button>
-    <button type="button" data-tab="bookings">Bookings</button>
-  </div>
+<div class="tabs" id="tabs">
+  <button data-tab="movies" class="active">Movies</button>
+  <button data-tab="theaters">Theaters</button>
+  <button data-tab="showtimes">Showtimes</button>
+  <button data-tab="bookings">Bookings</button>
+</div>
+<div id="msg" class="msg"></div>
 
-  <div class="admin-head">
-    <h2 id="tabTitle">Movies</h2>
-    <button type="button" class="btn btn-small" id="addBtn">+ Add</button>
+<!-- ============ Movies ============ -->
+<section id="tab-movies">
+  <div class="panel">
+    <h2>Add a movie</h2>
+    <form id="movie-form">
+      <div class="form-grid">
+        <div><label>Title *</label><input name="title" required maxlength="150"></div>
+        <div><label>Genre</label><input name="genre" maxlength="80"></div>
+        <div><label>Language</label><input name="language" maxlength="50"></div>
+        <div><label>Duration (min)</label><input name="duration_min" type="number" min="1" max="600" value="120"></div>
+        <div><label>Rating (0-10)</label><input name="rating" type="number" min="0" max="10" step="0.1" value="0"></div>
+        <div><label>Poster URL</label><input name="poster_url" placeholder="https://..."></div>
+      </div>
+      <label>Description</label><textarea name="description"></textarea>
+      <p><button class="btn" type="submit">Add movie</button></p>
+    </form>
   </div>
-  <div class="table-wrap" id="tableWrap"></div>
+  <div class="panel table-wrap" id="movies-table"></div>
 </section>
 
-<dialog id="modal">
-  <form id="modalForm">
-    <h3 id="modalTitle"></h3>
-    <div id="modalFields"></div>
-    <p class="form-error" id="modalError"></p>
-    <div class="modal-actions">
-      <button type="button" class="btn btn-ghost" id="cancelBtn">Cancel</button>
-      <button type="submit" class="btn">Save</button>
-    </div>
-  </form>
-</dialog>
+<!-- ============ Theaters ============ -->
+<section id="tab-theaters" class="hidden">
+  <div class="panel">
+    <h2>Add a theater</h2>
+    <form id="theater-form">
+      <div class="form-grid">
+        <div><label>Name *</label><input name="name" required maxlength="120"></div>
+        <div><label>City *</label><input name="city" required maxlength="80" list="admin-cities" placeholder="e.g. Bengaluru"></div>
+        <div><label>Area / address *</label><input name="location" required maxlength="200" placeholder="e.g. MG Road"></div>
+        <div><label>Rows (A, B, C...)</label><input name="rows" type="number" min="1" max="26" value="8"></div>
+        <div><label>Seats per row</label><input name="seats_per_row" type="number" min="1" max="30" value="10"></div>
+      </div>
+      <datalist id="admin-cities"></datalist>
+      <button class="btn" type="submit">Add theater</button>
+    </form>
+  </div>
+  <div class="panel table-wrap" id="theaters-table"></div>
+</section>
+
+<!-- ============ Showtimes ============ -->
+<section id="tab-showtimes" class="hidden">
+  <div class="panel">
+    <h2>Add a showtime</h2>
+    <form id="showtime-form">
+      <div class="form-grid">
+        <div><label>Movie *</label><select name="movie_id" id="st-movie" required></select></div>
+        <div><label>Theater *</label><select name="theater_id" id="st-theater" required></select></div>
+        <div><label>Date and time *</label><input name="start_time" type="datetime-local" required></div>
+        <div><label>Ticket price (INR) *</label><input name="price" type="number" min="1" max="10000" step="0.01" value="250" required></div>
+      </div>
+      <button class="btn" type="submit">Add showtime</button>
+    </form>
+  </div>
+  <div class="panel table-wrap" id="showtimes-table"></div>
+</section>
+
+<!-- ============ Bookings ============ -->
+<section id="tab-bookings" class="hidden">
+  <div class="panel table-wrap" id="bookings-table"></div>
+</section>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='js/admin.js') }}"></script>{% endblock %}
+
+{% block scripts %}
+<script>
+  const msgBox = document.getElementById("msg");
+  function flash(text, ok) {
+    msgBox.textContent = text;
+    msgBox.className = "msg show " + (ok ? "ok" : "error");
+    setTimeout(() => msgBox.classList.remove("show"), 4000);
+  }
+
+  // Build a table. rows = array of arrays; each cell is text or a DOM node.
+  function renderTable(el, headers, rows, emptyText) {
+    el.innerHTML = "";
+    if (!rows.length) { el.appendChild(h("p", "muted", emptyText)); return; }
+    const table = h("table");
+    const head = h("tr");
+    headers.forEach(t => head.appendChild(h("th", "", t)));
+    table.appendChild(head);
+    rows.forEach(cells => {
+      const tr = h("tr");
+      cells.forEach(c => {
+        const td = h("td");
+        if (c instanceof Node) td.appendChild(c); else td.textContent = c;
+        tr.appendChild(td);
+      });
+      table.appendChild(tr);
+    });
+    el.appendChild(table);
+  }
+
+  function deleteButton(url, onDone) {
+    const btn = h("button", "btn danger small", "Delete");
+    btn.type = "button";
+    btn.addEventListener("click", async () => {
+      if (!confirm("Delete this item?")) return;
+      try { await api(url, "DELETE"); flash("Deleted.", true); onDone(); }
+      catch (e) { flash(e.message, false); }
+    });
+    return btn;
+  }
+
+  // ---- tabs ----
+  document.getElementById("tabs").addEventListener("click", e => {
+    const tab = e.target.dataset.tab;
+    if (!tab) return;
+    document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b === e.target));
+    ["movies", "theaters", "showtimes", "bookings"].forEach(t =>
+      document.getElementById("tab-" + t).classList.toggle("hidden", t !== tab));
+    if (tab === "showtimes") { loadShowtimeChoices(); loadShowtimes(); }
+    if (tab === "bookings") loadBookings();
+  });
+
+  function formData(form) {
+    const data = {};
+    new FormData(form).forEach((v, k) => { data[k] = v; });
+    return data;
+  }
+
+  // ---- movies ----
+  async function loadMovies() {
+    const data = await api("/api/admin/movies");
+    renderTable(document.getElementById("movies-table"),
+      ["Title", "Genre", "Language", "Rating", "Active", ""],
+      data.movies.map(m => {
+        const box = document.createElement("input");
+        box.type = "checkbox";
+        box.checked = m.is_active;
+        box.addEventListener("change", async () => {
+          try { await api("/api/admin/movies/" + m.id, "PATCH", { is_active: box.checked }); }
+          catch (e) { box.checked = !box.checked; flash(e.message, false); }
+        });
+        return [m.title, m.genre, m.language, m.rating, box, deleteButton("/api/admin/movies/" + m.id, loadMovies)];
+      }), "No movies yet.");
+  }
+  document.getElementById("movie-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    try {
+      await api("/api/admin/movies", "POST", formData(e.target));
+      e.target.reset(); flash("Movie added.", true); loadMovies();
+    } catch (err) { flash(err.message, false); }
+  });
+
+  // ---- theaters ----
+  async function loadTheaters() {
+    const data = await api("/api/admin/theaters");
+    const cities = document.getElementById("admin-cities");
+    cities.innerHTML = "";
+    [...new Set(data.theaters.map(t => t.city))].forEach(c => cities.appendChild(new Option(c, c)));
+    renderTable(document.getElementById("theaters-table"),
+      ["Name", "City", "Area", "Seats", ""],
+      data.theaters.map(t => [t.name, t.city, t.location,
+        t.rows + " x " + t.seats_per_row + " = " + t.capacity,
+        deleteButton("/api/admin/theaters/" + t.id, loadTheaters)]), "No theaters yet.");
+  }
+  document.getElementById("theater-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    try {
+      await api("/api/admin/theaters", "POST", formData(e.target));
+      e.target.reset(); flash("Theater added.", true); loadTheaters();
+    } catch (err) { flash(err.message, false); }
+  });
+
+  // ---- showtimes ----
+  async function loadShowtimeChoices() {
+    const [m, t] = await Promise.all([api("/api/admin/movies"), api("/api/admin/theaters")]);
+    const movieSel = document.getElementById("st-movie");
+    const theaterSel = document.getElementById("st-theater");
+    movieSel.innerHTML = ""; theaterSel.innerHTML = "";
+    m.movies.filter(x => x.is_active).forEach(x => movieSel.appendChild(new Option(x.title, x.id)));
+    t.theaters.forEach(x => theaterSel.appendChild(new Option(x.name + " — " + x.city, x.id)));
+  }
+  async function loadShowtimes() {
+    const data = await api("/api/admin/showtimes");
+    renderTable(document.getElementById("showtimes-table"),
+      ["Movie", "Theater", "City", "Starts", "Price", ""],
+      data.showtimes.map(s => [s.movie_title, s.theater_name, s.theater_city,
+        fmtDateTime(s.start_time), money(s.price),
+        deleteButton("/api/admin/showtimes/" + s.id, loadShowtimes)]), "No showtimes yet.");
+  }
+  document.getElementById("showtime-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    try {
+      await api("/api/admin/showtimes", "POST", formData(e.target));
+      flash("Showtime added.", true); loadShowtimes();
+    } catch (err) { flash(err.message, false); }
+  });
+
+  // ---- bookings ----
+  async function loadBookings() {
+    const data = await api("/api/admin/bookings");
+    renderTable(document.getElementById("bookings-table"),
+      ["Ref", "Customer", "Movie", "Theater", "Show", "Seats", "Total", "Status"],
+      data.bookings.map(b => [b.reference, b.user_name + " (" + b.user_email + ")", b.movie.title,
+        b.theater.name, fmtDateTime(b.showtime.start_time), b.seats.join(", "), money(b.total), b.status]),
+      "No bookings yet.");
+  }
+
+  loadMovies().catch(e => flash(e.message, false));
+  loadTheaters().catch(e => flash(e.message, false));
+</script>
+{% endblock %}

@@ -1,8 +1,113 @@
 {% extends "base.html" %}
-{% block title %}Choose seats – MovieBook{% endblock %}
+{% block title %}Choose seats{% endblock %}
 {% block content %}
-<section class="container section" id="app" data-showtime-id="{{ showtime_id }}">
-  <p class="empty">Loading seats…</p>
-</section>
+<h1 id="movie-title">Choose your seats</h1>
+<p class="muted" id="show-info"></p>
+
+<div class="panel">
+  <div class="screen">SCREEN</div>
+  <div class="seat-map" id="seat-map"></div>
+  <div class="legend"><span>Available</span><span class="sel">Selected</span><span class="tkn">Booked</span></div>
+
+  <div id="msg" class="msg error"></div>
+  <div class="summary">
+    <div id="summary" class="muted">No seats selected.</div>
+    <button class="btn" id="book-btn" disabled>Book tickets</button>
+  </div>
+</div>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='js/book.js') }}"></script>{% endblock %}
+
+{% block scripts %}
+<script>
+  const SHOWTIME_ID = {{ showtime_id }};
+  const MAX_SEATS = 10;
+  const map = document.getElementById("seat-map");
+  const summary = document.getElementById("summary");
+  const bookBtn = document.getElementById("book-btn");
+  const msg = document.getElementById("msg");
+  const selected = new Set();
+  let price = 0;
+  let isPast = false;
+
+  function showError(text) { msg.textContent = text; msg.classList.add("show"); }
+
+  function updateSummary() {
+    const seats = [...selected].sort((a, b) => a[0].localeCompare(b[0]) || Number(a.slice(1)) - Number(b.slice(1)));
+    summary.textContent = seats.length
+      ? seats.join(", ") + "  •  " + money(price * seats.length)
+      : "No seats selected.";
+    bookBtn.disabled = !seats.length || isPast;
+  }
+
+  function drawSeats(theater, taken) {
+    map.innerHTML = "";
+    const takenSet = new Set(taken);
+    for (let r = 0; r < theater.rows; r++) {
+      const letter = String.fromCharCode(65 + r);
+      const row = h("div", "seat-row");
+      row.appendChild(h("div", "row-label", letter));
+      for (let n = 1; n <= theater.seats_per_row; n++) {
+        const label = letter + n;
+        const btn = h("button", "seat", String(n));
+        btn.type = "button";
+        btn.title = label;
+        if (takenSet.has(label) || isPast) {
+          btn.classList.add("taken");
+          btn.disabled = true;
+          selected.delete(label);
+        } else {
+          if (selected.has(label)) btn.classList.add("selected");
+          btn.addEventListener("click", () => {
+            msg.classList.remove("show");
+            if (selected.has(label)) {
+              selected.delete(label);
+              btn.classList.remove("selected");
+            } else {
+              if (selected.size >= MAX_SEATS) { showError("You can select at most " + MAX_SEATS + " seats."); return; }
+              selected.add(label);
+              btn.classList.add("selected");
+            }
+            updateSummary();
+          });
+        }
+        row.appendChild(btn);
+      }
+      map.appendChild(row);
+    }
+    updateSummary();
+  }
+
+  async function load() {
+    try {
+      const data = await api("/api/showtimes/" + SHOWTIME_ID);
+      price = data.showtime.price;
+      isPast = data.past;
+      document.getElementById("movie-title").textContent = data.movie.title;
+      document.getElementById("show-info").textContent =
+        data.theater.name + ", " + data.theater.location + ", " + data.theater.city +
+        "  •  " + fmtDateTime(data.showtime.start_time) + "  •  " + money(price) + " per seat";
+      if (isPast) showError("This show has already started.");
+      drawSeats(data.theater, data.taken);
+      return data;
+    } catch (e) {
+      if (e.status === 401) { window.location.href = "/login?next=" + encodeURIComponent(location.pathname); return; }
+      showError(e.message);
+    }
+  }
+
+  bookBtn.addEventListener("click", async () => {
+    msg.classList.remove("show");
+    bookBtn.disabled = true;
+    try {
+      const data = await api("/api/bookings", "POST", { showtime_id: SHOWTIME_ID, seats: [...selected] });
+      window.location.href = "/booking/" + data.booking.reference;
+    } catch (e) {
+      showError(e.message);
+      if (e.status === 409) await load();   // someone took a seat: refresh the map
+      updateSummary();
+    }
+  });
+
+  load();
+</script>
+{% endblock %}

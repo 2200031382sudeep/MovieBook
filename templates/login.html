@@ -1,21 +1,34 @@
 {% extends "base.html" %}
-{% block title %}Login – MovieBook{% endblock %}
+{% block title %}Login{% endblock %}
 {% block content %}
-<div class="card auth-card">
-  <h1>Welcome back</h1>
-  <form id="loginForm">
-    <div class="form-group">
-      <label for="email">Email</label>
-      <input type="email" id="email" name="email" required autocomplete="email">
-    </div>
-    <div class="form-group">
-      <label for="password">Password</label>
-      <input type="password" id="password" name="password" required autocomplete="current-password">
-    </div>
-    <p class="form-error" id="formError"></p>
-    <button type="submit" class="btn btn-block">Login</button>
+<div class="panel auth-box">
+  <h1>Login</h1>
+  <form id="form">
+    <div class="field"><label for="email">Email</label><input id="email" type="email" required autocomplete="email"></div>
+    <div class="field"><label for="password">Password</label><input id="password" type="password" required autocomplete="current-password"></div>
+    <div id="msg" class="msg error"></div>
+    <button class="btn" type="submit">Login</button>
   </form>
-  <p class="auth-switch">New here? <a href="/register">Create an account</a></p>
+  <p class="muted">New here? <a href="/register">Create an account</a></p>
 </div>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='js/auth.js') }}"></script>{% endblock %}
+
+{% block scripts %}
+<script>
+  const msg = document.getElementById("msg");
+  document.getElementById("form").addEventListener("submit", async e => {
+    e.preventDefault();
+    msg.classList.remove("show");
+    try {
+      await api("/api/auth/login", "POST", {
+        email: document.getElementById("email").value,
+        password: document.getElementById("password").value,
+      });
+      window.location.href = safeNext("/theaters");   // after login: the theater search page
+    } catch (err) {
+      msg.textContent = err.message;
+      msg.classList.add("show");
+    }
+  });
+</script>
+{% endblock %}

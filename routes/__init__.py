@@ -1,9 +1,8 @@
 def register_blueprints(app):
-    from routes.pages import pages_bp
-    from routes.auth import auth_bp
-    from routes.public import public_bp
-    from routes.admin import admin_bp
+    from .pages import bp as pages_bp
+    from .api_public import bp as api_bp
+    from .api_admin import bp as admin_api_bp
+
     app.register_blueprint(pages_bp)
-    app.register_blueprint(auth_bp)
-    app.register_blueprint(public_bp)
-    app.register_blueprint(admin_bp)
+    app.register_blueprint(api_bp)
+    app.register_blueprint(admin_api_bp)

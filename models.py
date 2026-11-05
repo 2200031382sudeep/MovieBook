@@ -59,7 +59,8 @@ class Theater(db.Model):
     __tablename__ = "theaters"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
-    location = db.Column(db.String(200), nullable=False)
+    city = db.Column(db.String(80), nullable=False, default="Bengaluru", index=True)  # the city shown in the chooser
+    location = db.Column(db.String(200), nullable=False)                # area / address
     rows = db.Column(db.Integer, nullable=False, default=8)             # A, B, C ...
     seats_per_row = db.Column(db.Integer, nullable=False, default=10)
 
@@ -81,7 +82,7 @@ class Theater(db.Model):
 
     def to_dict(self):
         return {
-            "id": self.id, "name": self.name, "location": self.location,
+            "id": self.id, "name": self.name, "city": self.city, "location": self.location,
             "rows": self.rows, "seats_per_row": self.seats_per_row, "capacity": self.capacity,
         }
 

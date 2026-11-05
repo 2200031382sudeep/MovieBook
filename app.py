@@ -14,6 +14,9 @@ def create_app():
     import models  # noqa: F401  (so SQLAlchemy knows the tables)
     register_blueprints(app)
 
+    from theater_search import bp as theater_search_bp  # theater search page + API
+    app.register_blueprint(theater_search_bp)
+
     # Create the tables in MySQL the first time (does nothing if they already exist).
     with app.app_context():
         try:

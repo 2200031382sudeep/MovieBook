@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}{{ code }} – MovieBook{% endblock %}
+{% block title %}Error {{ code }}{% endblock %}
 {% block content %}
-<section class="container section" style="text-align:center">
-  <h1 style="font-size:3rem">{{ code }}</h1>
-  <p class="muted">{{ message }}</p>
-  <p style="margin-top:20px"><a class="btn" href="/">Back to movies</a></p>
-</section>
+<div class="error-page">
+  <div class="code">{{ code }}</div>
+  <p>{{ message }}</p>
+  <a class="btn" href="/">Back to home</a>
+</div>
 {% endblock %}

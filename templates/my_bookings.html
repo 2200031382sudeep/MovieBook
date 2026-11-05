@@ -1,9 +1,43 @@
 {% extends "base.html" %}
-{% block title %}My bookings – MovieBook{% endblock %}
+{% block title %}My bookings{% endblock %}
 {% block content %}
-<section class="container section">
-  <h2>My bookings</h2>
-  <div id="list"><p class="empty">Loading…</p></div>
-</section>
+<h1>My bookings</h1>
+<div id="status"></div>
+<div id="list"></div>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='js/my_bookings.js') }}"></script>{% endblock %}
+
+{% block scripts %}
+<script>
+  const statusBox = document.getElementById("status");
+  const list = document.getElementById("list");
+
+  async function load() {
+    statusBox.textContent = "Loading...";
+    try {
+      const data = await api("/api/bookings");
+      list.innerHTML = "";
+      data.bookings.forEach(b => {
+        const card = h("div", "card");
+        const title = h("h3");
+        const link = h("a", "", b.movie.title);
+        link.href = "/booking/" + b.reference;
+        title.appendChild(link);
+        card.appendChild(title);
+        card.appendChild(h("div", "place", b.theater.name + ", " + b.theater.location + "  •  " + fmtDateTime(b.showtime.start_time)));
+        const line = h("div");
+        line.appendChild(document.createTextNode("Seats: " + b.seats.join(", ") + "  •  " + money(b.total) + "  •  "));
+        line.appendChild(h("span", "status-" + b.status, b.status));
+        line.appendChild(document.createTextNode("  •  Ref "));
+        line.appendChild(h("span", "ref", b.reference));
+        card.appendChild(line);
+        list.appendChild(card);
+      });
+      statusBox.textContent = data.bookings.length ? "" : "You have no bookings yet.";
+    } catch (e) {
+      if (e.status === 401) { window.location.href = "/login?next=/my-bookings"; return; }
+      statusBox.textContent = e.message;
+    }
+  }
+  load();
+</script>
+{% endblock %}

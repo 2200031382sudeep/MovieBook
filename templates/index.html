@@ -1,17 +1,56 @@
 {% extends "base.html" %}
-{% block title %}MovieBook – Now showing{% endblock %}
+{% block title %}Movies{% endblock %}
 {% block content %}
-<section class="hero">
-  <div class="container">
-    <h1>Lights. Camera. <span>Book your seats.</span></h1>
-    <p>Pick a movie, choose your theater and showtime, and select the best seats.</p>
-    <input type="search" id="searchInput" class="search" placeholder="Search movies…" aria-label="Search movies" autocomplete="off">
-  </div>
-</section>
+<h1>Now showing</h1>
 
-<section class="container section">
-  <h2>Now showing</h2>
-  <div class="movie-grid" id="movieGrid"><p class="empty">Loading movies…</p></div>
-</section>
+<div class="toolbar">
+  <select id="city" aria-label="Location"></select>
+  <input id="q" type="search" placeholder="Search movies...">
+</div>
+
+<div id="status"></div>
+<div class="grid" id="grid"></div>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='js/index.js') }}"></script>{% endblock %}
+
+{% block scripts %}
+<script>
+  const citySel = document.getElementById("city");
+  const qInput = document.getElementById("q");
+  const grid = document.getElementById("grid");
+  const statusBox = document.getElementById("status");
+  let timer = null;
+
+  function movieCard(m) {
+    const a = h("a", "movie-card");
+    a.href = "/movie/" + m.id;
+    a.appendChild(posterElement(m));
+    const info = h("div", "info");
+    info.appendChild(h("div", "title", m.title));
+    info.appendChild(h("div", "muted", [m.language, m.genre].filter(Boolean).join(" • ")));
+    info.appendChild(h("div", "muted", "★ " + Number(m.rating).toFixed(1) + "  •  " + m.duration_min + " min"));
+    a.appendChild(info);
+    return a;
+  }
+
+  async function load() {
+    const params = new URLSearchParams();
+    if (citySel.value) params.set("city", citySel.value);
+    if (qInput.value.trim()) params.set("q", qInput.value.trim());
+    statusBox.textContent = "Loading...";
+    try {
+      const data = await api("/api/movies?" + params);
+      grid.innerHTML = "";
+      data.movies.forEach(m => grid.appendChild(movieCard(m)));
+      statusBox.textContent = data.movies.length ? "" :
+        "No movies found" + (citySel.value ? " in " + citySel.value : "") + ".";
+    } catch (e) {
+      statusBox.textContent = e.message;
+    }
+  }
+
+  citySel.addEventListener("change", () => { setCity(citySel.value); load(); });
+  qInput.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(load, 300); });
+
+  fillCitySelect(citySel, "All locations").then(load);
+</script>
+{% endblock %}

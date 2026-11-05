@@ -1,8 +1,49 @@
 {% extends "base.html" %}
-{% block title %}Booking confirmation – MovieBook{% endblock %}
+{% block title %}Booking {{ b.reference }}{% endblock %}
 {% block content %}
-<section class="container section" id="app" data-booking-id="{{ booking_id }}">
-  <p class="empty">Loading your ticket…</p>
-</section>
+<h1>Your booking</h1>
+
+<div class="panel ticket">
+  <dl>
+    <dt>Reference</dt><dd class="ref">{{ b.reference }}</dd>
+    <dt>Status</dt><dd class="status-{{ b.status }}">{{ b.status }}</dd>
+    <dt>Movie</dt><dd>{{ b.movie.title }}</dd>
+    <dt>Theater</dt><dd>{{ b.theater.name }}, {{ b.theater.location }}</dd>
+    <dt>Show time</dt><dd id="show-time" data-iso="{{ b.showtime.start_time }}">{{ b.showtime.start_time }}</dd>
+    <dt>Seats</dt><dd>{{ b.seats|join(", ") }}</dd>
+    <dt>Total</dt><dd id="total" data-amount="{{ b.total }}">{{ b.total }}</dd>
+    <dt>Booked by</dt><dd>{{ b.user_name }}</dd>
+  </dl>
+  <div id="msg" class="msg error"></div>
+  <p>
+    {% if b.status == "Confirmed" %}
+      <button class="btn danger" id="cancel-btn" type="button">Cancel booking</button>
+    {% endif %}
+    <a class="btn secondary" href="/my-bookings">My bookings</a>
+  </p>
+</div>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='js/booking.js') }}"></script>{% endblock %}
+
+{% block scripts %}
+<script>
+  const timeEl = document.getElementById("show-time");
+  timeEl.textContent = fmtDateTime(timeEl.dataset.iso);
+  const totalEl = document.getElementById("total");
+  totalEl.textContent = money(totalEl.dataset.amount);
+
+  const cancelBtn = document.getElementById("cancel-btn");
+  if (cancelBtn) {
+    cancelBtn.addEventListener("click", async () => {
+      if (!confirm("Cancel this booking?")) return;
+      try {
+        await api("/api/bookings/{{ b.id }}/cancel", "POST");
+        window.location.reload();
+      } catch (e) {
+        const msg = document.getElementById("msg");
+        msg.textContent = e.message;
+        msg.classList.add("show");
+      }
+    });
+  }
+</script>
+{% endblock %}

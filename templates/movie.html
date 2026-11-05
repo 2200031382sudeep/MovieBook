@@ -1,8 +1,77 @@
 {% extends "base.html" %}
-{% block title %}Movie – MovieBook{% endblock %}
+{% block title %}{{ movie.title }}{% endblock %}
 {% block content %}
-<div id="app" data-movie-id="{{ movie_id }}">
-  <section class="container section"><p class="empty">Loading…</p></section>
+<div class="movie-head">
+  {% if movie.poster_url %}
+    <img class="poster" src="{{ movie.poster_url }}" alt="{{ movie.title }}">
+  {% else %}
+    <div class="poster poster-ph" style="width:200px">{{ movie.title[:1]|upper }}</div>
+  {% endif %}
+  <div class="details">
+    <h1>{{ movie.title }}</h1>
+    <div>
+      {% if movie.language %}<span class="pill">{{ movie.language }}</span>{% endif %}
+      {% if movie.genre %}<span class="pill">{{ movie.genre }}</span>{% endif %}
+      <span class="pill">{{ movie.duration_min }} min</span>
+      <span class="pill">&#9733; {{ '%.1f'|format(movie.rating) }}</span>
+    </div>
+    <p>{{ movie.description }}</p>
+  </div>
 </div>
+
+<div class="toolbar">
+  <label for="city" style="margin:0;align-self:center">Location:</label>
+  <select id="city"></select>
+</div>
+
+<div id="status"></div>
+<div id="shows"></div>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='js/movie.js') }}"></script>{% endblock %}
+
+{% block scripts %}
+<script>
+  const MOVIE_ID = {{ movie.id }};
+  const citySel = document.getElementById("city");
+  const statusBox = document.getElementById("status");
+  const showsBox = document.getElementById("shows");
+
+  async function load() {
+    statusBox.textContent = "Loading shows...";
+    showsBox.innerHTML = "";
+    const params = new URLSearchParams();
+    if (citySel.value) params.set("city", citySel.value);
+    try {
+      const data = await api("/api/movies/" + MOVIE_ID + "?" + params);
+
+      // group the shows by theater
+      const byTheater = new Map();
+      data.showtimes.forEach(s => {
+        if (!byTheater.has(s.theater.id)) byTheater.set(s.theater.id, { theater: s.theater, shows: [] });
+        byTheater.get(s.theater.id).shows.push(s);
+      });
+
+      byTheater.forEach(({ theater, shows }) => {
+        const card = h("div", "card");
+        card.appendChild(h("h3", "", theater.name));
+        card.appendChild(h("div", "place", theater.location + ", " + theater.city));
+        shows.forEach(s => {
+          const a = h("a", "show-btn");
+          a.href = "/book/" + s.id;
+          a.appendChild(document.createTextNode(fmtDateTime(s.start_time)));
+          a.appendChild(h("small", "", money(s.price)));
+          card.appendChild(a);
+        });
+        showsBox.appendChild(card);
+      });
+
+      statusBox.textContent = byTheater.size ? "" :
+        "No upcoming shows" + (citySel.value ? " in " + citySel.value : "") + ".";
+    } catch (e) {
+      statusBox.textContent = e.message;
+    }
+  }
+
+  citySel.addEventListener("change", () => { setCity(citySel.value); load(); });
+  fillCitySelect(citySel, "All locations").then(load);
+</script>
+{% endblock %}
